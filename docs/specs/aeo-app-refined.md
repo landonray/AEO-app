@@ -656,7 +656,11 @@ Where the denominator is zero, `sov = 0`.
 
 ### 13.4 Sentiment
 
-Map per-row sentiment to numeric (`positive=80`, `neutral=55`, `negative=30`), average across all runs in the window (including non-mentioned, which contribute `neutral=55`). Display as integer (e.g. `64`).
+Compute Avg Sentiment **only over runs where `mentioned = true`** in the window/model filter. Map per-row sentiment to numeric (`positive=80`, `neutral=55`, `negative=30`) and average across those mentioned runs only.
+
+**Empty state:** if there are zero mentioned runs in the window, return `null` and display `—` in the UI (do NOT default to `55`). This avoids the failure mode where a brand with rare-but-glowing mentions and a brand nobody discusses both read as ~`55` "neutral sentiment" — the real story for the second brand is "low visibility," and the sentiment number should not paper over that. Visibility (§13.1) is the metric that captures how often the brand appears; Sentiment should reflect how it is talked about *when it appears*, not be diluted by silence.
+
+Apply the same rule everywhere Avg Sentiment is surfaced — the Overview metric card, the Rankings table's Sentiment column (per-entity: average over runs where that entity was mentioned; `—` if none), and any other dashboard surface that aggregates sentiment. The per-run `runs.sentiment` field stays as written by the parser (defaults to `'neutral'` per the schema) — the change is in the aggregation, not in storage.
 
 ### 13.5 Visibility change
 
@@ -728,13 +732,13 @@ Response:
     visibilityChange: number,   // percentage points
     mentioned: number,
     totalRuns: number,
-    avgSentiment: number,       // 0..100
+    avgSentiment: number | null, // 0..100 over mentioned runs only; null when mentioned === 0 (render as "—")
     avgPosition: number | null, // 1..5
     sov: number,                // 0..1
     competitiveRank: number,    // 1..N, rank by visibility among brand+competitors
     totalCitations: number,
   },
-  rankings: { name, isYou: boolean, visibility, sov, sentiment, position, visibilityChange }[],
+  rankings: { name, isYou: boolean, visibility, sov, sentiment: number | null, position, visibilityChange }[],  // sentiment averaged over runs where that entity was mentioned; null when none
   trend: { weekStart: string, [entityName: string]: number }[],
   sources: { domain, type, retrievalRate, citationRate }[],  // top 8
   domainTypes: { type, count, percentage }[],
@@ -846,7 +850,7 @@ Two-column top row: a 280px left column of metric cards, and a flex right column
 
 1. Visibility — `text-[28px] font-semibold tabular-nums` percentage, with change indicator (↑ teal-green or ↓ red) and "vs prior" label.
 2. Mentioned In — "X / Y" (mentioned / total runs).
-3. Avg Sentiment — integer score 0–100.
+3. Avg Sentiment — integer score 0–100, computed over mentioned runs only (§13.4). When there are no mentioned runs in the window, render `—` (do not show `55`).
 4. Avg Position — "#X.X" or "—".
 
 Each card: `rounded-lg border border-border/40 bg-card/60 p-5`, label `text-[10px] uppercase tracking-widest text-muted-foreground/60`, icon top-right (muted).
@@ -862,7 +866,7 @@ Each card: `rounded-lg border border-border/40 bg-card/60 p-5`, label `text-[10p
 
 **C. Rankings table:**
 
-- Columns: `#`, Brand, Visibility (with progress bar + percentage + change), SOV, Sentiment (color dot + numeric), Position (`#X.X`).
+- Columns: `#`, Brand, Visibility (with progress bar + percentage + change), SOV, Sentiment (color dot + numeric, computed over runs where that entity was mentioned; render `—` with a muted dot when the entity has zero mentioned runs), Position (`#X.X`, `—` when no position data).
 - Row order: brand and competitors sorted by visibility desc.
 - Brand row: `bg-primary/[0.03]`, brand name in teal, position in teal, avatar circle teal background. Competitor rows: gray avatar.
 - Visibility progress bar: `w-14 h-1` rounded, filled at `visibility%`.
@@ -1026,7 +1030,8 @@ Each card: `rounded-lg border border-border/40 bg-card/60 p-5`, label `text-[10p
 - **Generation model returns unparseable JSON:** retry once with stricter instructions. If still fails, surface a clear error and offer "Try again".
 - **Brand mention false positive on generic name:** known weakness for very generic brand names (e.g. "Apple"). Acceptable for MVP; users with generic names will see inflated visibility. Documented in README.
 - **Position scoring on numbered lists where brand appears multiple times:** first mention wins.
-- **Sentiment with brand mentioned but no qualifying words:** neutral.
+- **Sentiment with brand mentioned but no qualifying words:** the per-run value is `neutral` (parser default). The aggregated Avg Sentiment averages only over mentioned runs (§13.4).
+- **Avg Sentiment with zero mentioned runs in the window:** return `null`, render `—`. Do NOT default to `55`. This avoids conflating "not enough data to judge tone" with "neutrally talked about." Same rule applies per-entity in the Rankings table.
 - **Citation extraction from URL containing trailing parenthesis:** the regex stops at `)`; explicit trailing `.,;:!?` stripped after match.
 - **DataForSEO returns no SERP at all (network or auth error):** treated as a single-model failure for `google_aio`, logged, skipped.
 - **Perplexity returns text without citations:** still record the run with `mentioned`, `position`, etc.; citations are simply zero.
@@ -1107,6 +1112,9 @@ Each question below was an ambiguity or contradiction in the raw spec. The resol
 
 - **Q14 — Re-onboarding flow.**
   **For the MVP, re-onboarding requires deleting the primary brand row directly in Neon.** Documented in README as a known limitation. (Future: a Settings page with a "Reset" button.)
+
+- **Q15a — Should Avg Sentiment include non-mentioned runs?**
+  Raw spec implied averaging across all runs, which makes the metric mostly a function of mention frequency: a brand with rare-but-glowing mentions and a brand nobody discusses both land near `55`, reading on the dashboard as "neutral sentiment" when the second is really "low visibility." **Compute Avg Sentiment over mentioned runs only; render `—` when none.** Visibility (§13.1) already captures how often the brand appears; sentiment should reflect *how* it's talked about when it appears. Same rule applies to the per-entity Sentiment column in the Rankings table. Resolved by product judgment from the spec owner. See §13.4.
 
 - **Q15 — How does the UI know a "Run All Prompts" or cron run is finished?**
   Both routes are synchronous: the HTTP response returns when all model calls finish (or fail). **The UI shows a spinner from click until the response returns, then refreshes dashboard data.** Acceptable batch wall-clock for the MVP (5 prompts × 5 surfaces × ~5–15s per call, mostly serial = ~2–6 minutes).
