@@ -65,6 +65,12 @@ DATABASE_URL=<your-neon-connection-string>        # postgres://...neon.tech/...?
 
 # Scheduler auth (protects the cron endpoint)
 CRON_SECRET=<random-long-string>
+
+# App port — this machine already has 3000 and 5000 in use by other projects,
+# so this app runs on 4810. The dev and start scripts must bind to this port
+# (e.g. `next dev -p 4810` / `next start -p 4810`), and the cron script must
+# POST to http://localhost:4810.
+PORT=4810
 ```
 
 ---
@@ -379,7 +385,7 @@ The product's value is trend-over-time, which only exists if prompts run on a re
 - Add `POST /api/cron/run` that runs ALL active prompts across all models (same logic as "Run All Prompts").
 - Protect it: require an `Authorization: Bearer ${CRON_SECRET}` header; reject anything else with 401.
 - Make it resilient: a single model or prompt failure logs and continues; the run never aborts the whole batch.
-- Add an `npm run cron` script that POSTs to `http://localhost:3000/api/cron/run` with the `CRON_SECRET` header, so the daily run is a single command.
+- Add an `npm run cron` script that POSTs to `http://localhost:4810/api/cron/run` with the `CRON_SECRET` header, so the daily run is a single command.
 - **This deploys locally**, so trigger `npm run cron` once a day with the OS scheduler:
   - macOS/Linux: a `cron` entry (e.g. `0 9 * * *`) that runs the command.
   - Windows: a Task Scheduler daily task.
@@ -708,9 +714,9 @@ The app must be runnable with:
 ```shell
 npm install
 npm run db:migrate     # applies schema to Neon
-npm run dev
+npm run dev            # serves on port 4810 (next dev -p 4810)
 ```
 
-Open `http://localhost:3000`. If tables don't exist, it redirects to `/setup`, where one button applies the schema to Neon. After tables exist, it shows the onboarding flow. After onboarding, it shows the full dashboard.
+Open `http://localhost:4810`. If tables don't exist, it redirects to `/setup`, where one button applies the schema to Neon. After tables exist, it shows the onboarding flow. After onboarding, it shows the full dashboard.
 
 Build this as a **complete, production-ready MVP** with every feature described above fully implemented and working.
