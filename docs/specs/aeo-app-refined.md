@@ -761,7 +761,9 @@ Response: `{ sources, domainTypes, trend, view }`, where `sources` keys by `doma
 
 ### `GET /api/prompts/metrics?days=90&model=claude`
 
-Response: `{ prompts: { id, text, topic, visibility, sentiment, position, models: short[], activeRunCount }[] }`. `models` is the set of model surfaces that have at least one run for that prompt in the window.
+Response: `{ prompts: { id, text, topic, visibility, sentiment: number | null, position, models: short[], activeRunCount }[] }`. `models` is the set of model surfaces that have at least one run for that prompt in the window.
+
+The per-prompt `sentiment` follows the same rule as every other Avg Sentiment surface in this spec (§13.4): it is averaged only over runs of that prompt where `mentioned = true`, and is `null` when that prompt has zero mentioned runs in the window/model filter. The UI renders `null` as `—` (not `55`). This is not "all-runs sentiment for this prompt" — implementers should not aggregate across non-mentioned runs even though storage retains a default `'neutral'` value for them.
 
 ### `POST /api/prompts/run`
 
@@ -913,7 +915,7 @@ Each card: `rounded-lg border border-border/40 bg-card/60 p-5`, label `text-[10p
 - Topic filter buttons (pills): All, plus every distinct topic present in `prompts.topic` (e.g. Affiliate, Core, Category, Free tool, Competitor). "All" is active by default.
 - Add prompt: inline form with text input + topic dropdown (free-text or pick from existing topics) + Add button. On submit, `POST /api/prompts`, prepend the new row, clear form.
 - Prompts table:
-  - Columns: Prompt (clickable, max-w-[400px], truncated), Visibility%, Sentiment (dot + score), Position (`#X.X`), Models (colored ModelIcon pills indicating which models have runs in the window), Actions (Play + Archive icons).
+  - Columns: Prompt (clickable, max-w-[400px], truncated), Visibility%, Sentiment (dot + score; computed over the prompt's runs where `mentioned = true` per §13.4 — the API returns `number | null` and the UI renders `null` as `—` with a muted dot, never `55`), Position (`#X.X`), Models (colored ModelIcon pills indicating which models have runs in the window), Actions (Play + Archive icons).
   - Click prompt text → open Prompt Detail Modal.
   - Play icon → `POST /api/prompts/run` with `{ promptId }`; show spinner inline; on success refresh prompt row.
   - Archive icon → `DELETE /api/prompts` with `{ id }`; row fades out, table re-fetches.
