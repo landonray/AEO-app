@@ -44,7 +44,7 @@ LLM_GATEWAY_API_KEY=<your-llmgw_-key>
 # Visibility/sentiment/position are measured against THESE, so they must match
 # what a real person sees in ChatGPT / Claude / Gemini, not a cheap API tier.
 MODEL_OPENAI=gpt-5.5
-MODEL_CLAUDE=claude-opus-4-7
+MODEL_CLAUDE=claude-opus-4-8
 MODEL_GEMINI=gemini-3.1-pro-preview
 
 # GENERATION model — internal plumbing only (crawl analysis, prompt + competitor
@@ -342,7 +342,7 @@ For each prompt, run across 5 models **sequentially** (not parallel — avoids r
 
 Three models go through `gateway.ts` (read text from top-level `content`); Perplexity goes through `perplexity.ts` (direct); Google AI Overview is DataForSEO. All chat calls use max_tokens 2000, temp 0.3. Pass a shared `run_id` (e.g. the batch id) to all gateway calls so cumulative cost is tracked.
 
-> **Model selection:** tracking uses frontier consumer-tier models (`gpt-5.5`, `claude-opus-4-7`, `gemini-3.1-pro-preview`, `sonar-pro`) so the numbers reflect what a real user sees in the chat apps — not cheaper API tiers. This costs meaningfully more per run than mini/flash tiers, and you're running every prompt × 5 models × daily, so watch `run_total_cost`. `gemini-3.1-pro-preview` is a preview id; if it gets deprecated, fall back to `gemini-2.5-pro` (stable).
+> **Model selection:** tracking uses frontier consumer-tier models (`gpt-5.5`, `claude-opus-4-8`, `gemini-3.1-pro-preview`, `sonar-pro`) so the numbers reflect what a real user sees in the chat apps — not cheaper API tiers. This costs meaningfully more per run than mini/flash tiers, and you're running every prompt × 5 models × daily, so watch `run_total_cost`. `gemini-3.1-pro-preview` is a preview id; if it gets deprecated, fall back to `gemini-2.5-pro` (stable).
 
 1. **OpenAI** — gateway, `model = MODEL_OPENAI`. Read `response.content`.
 2. **Claude** — gateway, `model = MODEL_CLAUDE`. Read `response.content`.
