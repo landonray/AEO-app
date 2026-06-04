@@ -2,21 +2,21 @@ import { describe, expect, it } from 'vitest';
 import type { TrendRow } from '@/types';
 import {
   buildVisibilitySeries,
-  formatWeekLabel,
+  formatDayLabel,
   isEmptyTrend,
   topSourceKeys,
 } from '../chartSeries';
 
-describe('formatWeekLabel', () => {
-  it('formats ISO weekStart as "MMM DD"', () => {
-    expect(formatWeekLabel('2025-11-17')).toBe('Nov 17');
-    expect(formatWeekLabel('2026-01-04')).toBe('Jan 04');
-    expect(formatWeekLabel('2026-06-01')).toBe('Jun 01');
+describe('formatDayLabel', () => {
+  it('formats ISO date as "MMM DD"', () => {
+    expect(formatDayLabel('2025-11-17')).toBe('Nov 17');
+    expect(formatDayLabel('2026-01-04')).toBe('Jan 04');
+    expect(formatDayLabel('2026-06-01')).toBe('Jun 01');
   });
 
   it('returns the raw string when the date cannot be parsed', () => {
-    expect(formatWeekLabel('not-a-date')).toBe('not-a-date');
-    expect(formatWeekLabel('')).toBe('');
+    expect(formatDayLabel('not-a-date')).toBe('not-a-date');
+    expect(formatDayLabel('')).toBe('');
   });
 });
 
@@ -27,8 +27,8 @@ describe('isEmptyTrend', () => {
     expect(isEmptyTrend(null)).toBe(true);
   });
 
-  it('treats arrays with rows as non-empty (even sparse weeks)', () => {
-    const single: TrendRow[] = [{ weekStart: '2026-06-01', brand: 0.1 }];
+  it('treats arrays with rows as non-empty (even sparse days)', () => {
+    const single: TrendRow[] = [{ date: '2026-06-01', brand: 0.1 }];
     expect(isEmptyTrend(single)).toBe(false);
   });
 });
@@ -56,10 +56,10 @@ describe('buildVisibilitySeries', () => {
 });
 
 describe('topSourceKeys', () => {
-  it('ranks keys by summed weekly value and caps at the limit', () => {
+  it('ranks keys by summed value and caps at the limit', () => {
     const data: TrendRow[] = [
       {
-        weekStart: '2026-05-17',
+        date: '2026-05-17',
         brand: 0.1,
         a: 0.2,
         b: 0.5,
@@ -69,7 +69,7 @@ describe('topSourceKeys', () => {
         f: 0.3,
       },
       {
-        weekStart: '2026-05-24',
+        date: '2026-05-24',
         brand: 0.2,
         a: 0.3,
         b: 0.6,
@@ -84,14 +84,14 @@ describe('topSourceKeys', () => {
   });
 
   it('breaks sum ties alphabetically for stability', () => {
-    const data: TrendRow[] = [{ weekStart: '2026-05-17', brand: 0, alpha: 0.5, beta: 0.5 }];
+    const data: TrendRow[] = [{ date: '2026-05-17', brand: 0, alpha: 0.5, beta: 0.5 }];
     expect(topSourceKeys(data, 2)).toEqual(['alpha', 'beta']);
   });
 
-  it('ignores the weekStart column and any non-numeric values', () => {
+  it('ignores the date column and any non-numeric values', () => {
     const data: TrendRow[] = [
-      { weekStart: '2026-05-17', brand: 0, foo: 0.5 },
-      { weekStart: '2026-05-24', brand: 0, foo: 0.5, weird: 'oops' as unknown as number },
+      { date: '2026-05-17', brand: 0, foo: 0.5 },
+      { date: '2026-05-24', brand: 0, foo: 0.5, weird: 'oops' as unknown as number },
     ];
     // 'brand' totals 0 and is ranked below 'foo'; the helper does not special-case brand.
     expect(topSourceKeys(data).filter((k) => k !== 'brand')).toEqual(['foo']);
@@ -102,7 +102,7 @@ describe('topSourceKeys', () => {
   });
 
   it('respects a custom limit', () => {
-    const data: TrendRow[] = [{ weekStart: '2026-05-17', brand: 0, a: 0.4, b: 0.3, c: 0.2 }];
+    const data: TrendRow[] = [{ date: '2026-05-17', brand: 0, a: 0.4, b: 0.3, c: 0.2 }];
     expect(topSourceKeys(data, 2)).toEqual(['a', 'b']);
   });
 });

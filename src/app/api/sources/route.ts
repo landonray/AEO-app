@@ -51,15 +51,6 @@ function parseView(raw: string | null): SourcesView {
   return raw === 'urls' ? 'urls' : 'domains';
 }
 
-function getSundayUTC(date: Date): Date {
-  const d = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
-  const dow = d.getUTCDay();
-  d.setUTCDate(d.getUTCDate() - dow);
-  return d;
-}
-
 function formatYMD(date: Date): string {
   const y = date.getUTCFullYear();
   const m = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -115,41 +106,41 @@ function computeSourcesTrend(
   const windowDays = Math.max(days, 28);
   const cutoff = now.getTime() - windowDays * MS_PER_DAY;
 
-  const runWeek = new Map<string, string>();
-  const totalRunsPerWeek = new Map<string, number>();
+  const runDay = new Map<string, string>();
+  const totalRunsPerDay = new Map<string, number>();
   for (const r of runs) {
     const t = new Date(r.createdAt).getTime();
     if (!Number.isFinite(t) || t < cutoff) continue;
-    const week = formatYMD(getSundayUTC(new Date(t)));
-    runWeek.set(r.id, week);
-    totalRunsPerWeek.set(week, (totalRunsPerWeek.get(week) ?? 0) + 1);
+    const day = formatYMD(new Date(t));
+    runDay.set(r.id, day);
+    totalRunsPerDay.set(day, (totalRunsPerDay.get(day) ?? 0) + 1);
   }
 
-  const entityRunsPerWeek = new Map<string, Map<string, Set<string>>>();
+  const entityRunsPerDay = new Map<string, Map<string, Set<string>>>();
   for (const c of citations) {
-    const week = runWeek.get(c.runId);
-    if (!week) continue;
+    const day = runDay.get(c.runId);
+    if (!day) continue;
     const key = citationKey(view, c);
     if (!key || !topSet.has(key)) continue;
-    let perWeek = entityRunsPerWeek.get(week);
-    if (!perWeek) {
-      perWeek = new Map();
-      entityRunsPerWeek.set(week, perWeek);
+    let perDay = entityRunsPerDay.get(day);
+    if (!perDay) {
+      perDay = new Map();
+      entityRunsPerDay.set(day, perDay);
     }
-    let runSet = perWeek.get(key);
+    let runSet = perDay.get(key);
     if (!runSet) {
       runSet = new Set();
-      perWeek.set(key, runSet);
+      perDay.set(key, runSet);
     }
     runSet.add(c.runId);
   }
 
-  const weeks = Array.from(totalRunsPerWeek.keys()).sort();
-  return weeks.map((weekStart) => {
-    const total = totalRunsPerWeek.get(weekStart) ?? 0;
-    const row: TrendRow = { weekStart, brand: 0 };
+  const dayKeys = Array.from(totalRunsPerDay.keys()).sort();
+  return dayKeys.map((date) => {
+    const total = totalRunsPerDay.get(date) ?? 0;
+    const row: TrendRow = { date, brand: 0 };
     for (const key of topEntities) {
-      const cited = entityRunsPerWeek.get(weekStart)?.get(key)?.size ?? 0;
+      const cited = entityRunsPerDay.get(date)?.get(key)?.size ?? 0;
       row[key] = total === 0 ? 0 : cited / total;
     }
     return row;

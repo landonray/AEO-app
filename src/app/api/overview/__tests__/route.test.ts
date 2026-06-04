@@ -329,7 +329,7 @@ describe('GET /api/overview — §13.5 visibilityChange + trend rows', () => {
     expect(out.metrics.visibilityChange).toBeNull();
   });
 
-  it('trend uses weekly buckets spanning at least 4 weeks (max(days, 28))', () => {
+  it('trend uses daily buckets within the max(days, 28) window', () => {
     const allRuns: Run[] = [
       run({ id: 'a', mentioned: true, daysAgo: 1 }, 1),
       run({ id: 'b', mentioned: false, daysAgo: 8 }, 2),
@@ -348,8 +348,8 @@ describe('GET /api/overview — §13.5 visibilityChange + trend rows', () => {
     });
     expect(out.trend.length).toBeGreaterThanOrEqual(2);
     for (const row of out.trend) {
-      expect(typeof row.weekStart).toBe('string');
-      expect(/^\d{4}-\d{2}-\d{2}$/.test(row.weekStart)).toBe(true);
+      expect(typeof row.date).toBe('string');
+      expect(/^\d{4}-\d{2}-\d{2}$/.test(row.date)).toBe(true);
       expect(typeof row.brand).toBe('number');
     }
   });

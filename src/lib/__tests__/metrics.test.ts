@@ -5,7 +5,7 @@ import {
   computeAvgPosition,
   computeAvgSentiment,
   computeVisibilityChange,
-  computeWeeklyTrend,
+  computeDailyTrend,
   computeDomainSources,
   computeUrlSources,
   computeCompetitiveRank,
@@ -270,15 +270,15 @@ describe('computeVisibilityChange — QA §8.5', () => {
 });
 
 // --------------------------------------------------------------------------
-// §8.6 Weekly trend bucketing
+// §8.6 Daily trend bucketing
 // --------------------------------------------------------------------------
 
-describe('computeWeeklyTrend — QA §8.6 (Sunday-start UTC buckets)', () => {
+describe('computeDailyTrend — QA §8.6 (UTC calendar-day buckets)', () => {
   const competitors = [{ name: 'Beta' }, { name: 'Gamma' }];
   const brand = { name: 'Acme' };
   const now = new Date('2026-06-03T12:00:00.000Z'); // a Wednesday
 
-  it('8.6.a Runs across 3 distinct weeks produce 3 ordered buckets', () => {
+  it('8.6.a Runs on distinct days produce one ordered bucket per day', () => {
     const runs: Run[] = [
       makeRun(
         { mentioned: true, createdAt: '2026-05-20T10:00:00.000Z' },
@@ -305,29 +305,35 @@ describe('computeWeeklyTrend — QA §8.6 (Sunday-start UTC buckets)', () => {
         3,
       ),
     ];
-    const trend = computeWeeklyTrend(runs, brand, competitors, 7, now);
-    expect(trend.length).toBe(3);
-    // ascending by weekStart
+    const trend = computeDailyTrend(runs, brand, competitors, 7, now);
+    expect(trend.length).toBe(4);
+    expect(trend.map((r) => r.date)).toEqual([
+      '2026-05-20',
+      '2026-05-21',
+      '2026-05-27',
+      '2026-06-01',
+    ]);
+    // ascending by date
     for (let i = 1; i < trend.length; i++) {
-      expect(
-        String(trend[i].weekStart) > String(trend[i - 1].weekStart),
-      ).toBe(true);
+      expect(String(trend[i].date) > String(trend[i - 1].date)).toBe(true);
     }
     expect(typeof trend[0].brand).toBe('number');
     expect(typeof trend[0].Beta).toBe('number');
     expect(typeof trend[0].Gamma).toBe('number');
   });
 
-  it('8.6.b Sunday 00:00 UTC belongs to that week (week-start key === Sunday)', () => {
+  it('8.6.b A run is bucketed by its own UTC calendar day, not the week start', () => {
+    // Monday 2026-06-01: weekly bucketing would have filed this under Sunday
+    // 2026-05-31; daily bucketing keeps it on 2026-06-01.
     const runs: Run[] = [
       makeRun(
-        { mentioned: true, createdAt: '2026-05-31T00:00:00.000Z' },
+        { mentioned: true, createdAt: '2026-06-01T10:00:00.000Z' },
         0,
       ),
     ];
-    const trend = computeWeeklyTrend(runs, brand, competitors, 7, now);
+    const trend = computeDailyTrend(runs, brand, competitors, 7, now);
     expect(trend.length).toBe(1);
-    expect(trend[0].weekStart).toBe('2026-05-31');
+    expect(trend[0].date).toBe('2026-06-01');
     expect(trend[0].brand).toBe(1);
   });
 
@@ -339,8 +345,9 @@ describe('computeWeeklyTrend — QA §8.6 (Sunday-start UTC buckets)', () => {
         0,
       ),
     ];
-    const trend = computeWeeklyTrend(runs, brand, competitors, 7, now);
+    const trend = computeDailyTrend(runs, brand, competitors, 7, now);
     expect(trend.length).toBe(1);
+    expect(trend[0].date).toBe('2026-05-13');
   });
 
   it('8.6.d Runs older than the window are excluded', () => {
@@ -350,43 +357,44 @@ describe('computeWeeklyTrend — QA §8.6 (Sunday-start UTC buckets)', () => {
         0,
       ),
     ];
-    expect(computeWeeklyTrend(runs, brand, competitors, 7, now)).toEqual([]);
+    expect(computeDailyTrend(runs, brand, competitors, 7, now)).toEqual([]);
   });
 
-  it('8.6.e Fewer than 4 weeks of data → only present weeks emitted (chart still renders)', () => {
+  it('8.6.e Only days with runs are emitted — no empty-day padding (chart still renders)', () => {
     const runs: Run[] = [
       makeRun(
         { mentioned: true, createdAt: '2026-06-01T10:00:00.000Z' },
         0,
       ),
     ];
-    const trend = computeWeeklyTrend(runs, brand, competitors, 90, now);
+    const trend = computeDailyTrend(runs, brand, competitors, 90, now);
     expect(trend.length).toBe(1);
-    expect(trend[0].weekStart).toBe('2026-05-31');
+    expect(trend[0].date).toBe('2026-06-01');
   });
 
-  it('8.6.f Per-week per-entity values are visibility fractions', () => {
-    // Three runs in the same week: 2 brand-mentioned, 1 competitor-Beta only
+  it('8.6.f Per-day per-entity values are visibility fractions', () => {
+    // Three runs on the same day: 2 brand-mentioned, 1 competitor-Beta only
     const runs: Run[] = [
       makeRun(
-        { mentioned: true, createdAt: '2026-06-01T10:00:00.000Z' },
+        { mentioned: true, createdAt: '2026-06-02T08:00:00.000Z' },
         0,
       ),
       makeRun(
-        { mentioned: true, createdAt: '2026-06-02T10:00:00.000Z' },
+        { mentioned: true, createdAt: '2026-06-02T12:00:00.000Z' },
         1,
       ),
       makeRun(
         {
           mentioned: false,
           competitorMentions: { Beta: true },
-          createdAt: '2026-06-02T10:00:00.000Z',
+          createdAt: '2026-06-02T18:00:00.000Z',
         },
         2,
       ),
     ];
-    const trend = computeWeeklyTrend(runs, brand, competitors, 7, now);
+    const trend = computeDailyTrend(runs, brand, competitors, 7, now);
     expect(trend.length).toBe(1);
+    expect(trend[0].date).toBe('2026-06-02');
     expect(trend[0].brand).toBeCloseTo(2 / 3, 10);
     expect(trend[0].Beta).toBeCloseTo(1 / 3, 10);
     expect(trend[0].Gamma).toBe(0);

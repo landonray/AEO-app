@@ -122,7 +122,7 @@ export interface RankingsRow {
 }
 
 export interface TrendRow {
-  weekStart: string;
+  date: string;
   brand: number;
   [entityName: string]: number | string;
 }

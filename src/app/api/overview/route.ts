@@ -19,7 +19,7 @@ import {
   computeSOV,
   computeVisibility,
   computeVisibilityChange,
-  computeWeeklyTrend,
+  computeDailyTrend,
 } from '@/lib/metrics';
 import type {
   Brand,
@@ -280,7 +280,7 @@ export function composeOverview(input: ComposeOverviewInput): OverviewResponse {
     totalCitations,
   };
 
-  const trend = computeWeeklyTrend(trendRuns, brand, competitors, days, now);
+  const trend = computeDailyTrend(trendRuns, brand, competitors, days, now);
 
   const allSources: SourceRow[] = computeDomainSources(currentRuns, windowCitations);
   const sources = allSources.slice(0, SOURCES_LIMIT);
