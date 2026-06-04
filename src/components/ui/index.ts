@@ -26,3 +26,4 @@ export {
 } from './ModelIcon';
 export { Dropdown, type DropdownProps, type DropdownOption } from './Dropdown';
 export { Modal, type ModalProps } from './Modal';
+export { Markdown, type MarkdownProps } from './Markdown';

@@ -14,12 +14,19 @@ import { test, expect, type Page, type Route } from '@playwright/test';
 const PROMPT_ID = 'p-seemore-e2e';
 const PROMPT_TEXT = 'top alternatives to HubSpot for integrated marketing and sales';
 
-// A response long enough to be truncated. The first 300 chars (the preview)
-// contain only padding; the distinctive tail marker lives PAST char 300, so it
-// can only be on screen once the full text is revealed.
-const PREVIEW = 'A'.repeat(300);
-const TAIL_MARKER = 'UNIQUE_TAIL_MARKER_XYZ_only_in_full_response';
-const FULL = `${PREVIEW}\n\n${TAIL_MARKER} — and several more paragraphs of detail.`;
+// A markdown response long enough to be truncated. The preview leads with a
+// **bold** span (so we can prove markdown is rendered, not shown raw); the
+// distinctive tail marker lives only in the full text, inside a bold list item,
+// so it can only appear once "See more" is clicked.
+const BOLD_LEAD = 'Top alternatives to HubSpot';
+const TAIL_MARKER = 'UNIQUE_TAIL_MARKER_only_in_full_response';
+const PREVIEW =
+  `**${BOLD_LEAD}** include Zoho, Salesforce, ActiveCampaign, Keap, and EngageBay — ` +
+  'each strong on combined marketing and sales. '.repeat(4);
+const FULL =
+  `${PREVIEW}\n\n## Full breakdown\n\n` +
+  `- **${TAIL_MARKER}** leads the list\n` +
+  `- Salesforce for enterprise\n`;
 
 async function mockPromptsApi(page: Page) {
   await page.route('**/api/prompts/metrics**', async (route: Route) => {
@@ -93,9 +100,17 @@ test.describe('Prompt detail — "See more" reveals the full response', () => {
     await expect(page.getByText(TAIL_MARKER)).toHaveCount(0);
     await expect(card).toContainText('Latest response preview');
 
-    // Click "See more" — the full response (including the tail marker) appears.
+    // Markdown is rendered, not shown raw: the bold lead is a <strong> element
+    // and the literal ** asterisks are gone from the panel.
+    await expect(card.locator('strong', { hasText: BOLD_LEAD })).toBeVisible();
+    await expect(card).not.toContainText('**');
+
+    // Click "See more" — the full response (including the tail marker) appears,
+    // rendered as a bold bullet item rather than raw markdown.
     await seeMore.click();
-    await expect(page.getByText(TAIL_MARKER)).toBeVisible();
+    await expect(card.locator('li strong', { hasText: TAIL_MARKER })).toBeVisible();
+    await expect(card.locator('ul li')).toHaveCount(2);
+    await expect(card).not.toContainText('**');
     const seeLess = page.getByRole('button', { name: 'See less' });
     await expect(seeLess).toBeVisible();
     // The label drops the "preview" qualifier once the full response is shown.
