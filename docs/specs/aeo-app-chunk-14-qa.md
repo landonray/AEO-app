@@ -1,19 +1,33 @@
-# Chunk 14 QA Report — DB queries (after fix iteration 2)
+# Chunk 14 QA Report — DB queries (after fix iteration 3)
 
 **Branch:** `pipeline-aeo-app-2245556e-chunk-14-dbquer`
 **Files under test:** `src/lib/queries.ts`, `src/lib/__tests__/queries.test.ts`
-**Test runner:** vitest 2.1.9 (run locally with `.env` loaded)
-**Result:** 39 passed / 1 failed / 0 skipped (4.19s)
+**Test runner:** vitest 2.1.9
+**Result:** 40 passed / 0 failed / 0 skipped (3.23s)
 
 ## Method
 
 The QA plan calls out three required scenario groups for `lib/queries.ts`:
 §2.5 (parameterization), §2.6 (date interval), §2.7 (model filter). The build
-plan additionally lists the full set of helpers the module must export. Each was
-verified by reading the implementation in `src/lib/queries.ts`, confirming the
-matching test cases in `src/lib/__tests__/queries.test.ts`, then running the
-full suite under vitest. The implementation file is ~770 lines; the test file
-is ~580 lines covering 40 cases.
+plan additionally lists the full set of helpers the module must export. Each
+scenario was verified by reading the implementation in `src/lib/queries.ts`,
+confirming the matching test cases in `src/lib/__tests__/queries.test.ts`,
+then running the full file under vitest. All 40 cases passed cleanly.
+
+## Fix iteration 3 — what changed and why it works
+
+The prior iteration's `buildListPrompts` assertion rejected the substring
+`is_active` anywhere in the emitted SQL. The implementation correctly SELECTs
+`is_active` as a column (so callers can populate `Prompt.isActive`) without
+filtering on it in the WHERE clause — and the spec calls for exactly that
+behavior (`listPrompts` returns all prompts; `listActivePrompts` is the
+filtered variant). The assertion was the bug, not the implementation.
+
+This fix rescopes the negative match to the WHERE clause only: it captures the
+substring between `WHERE` and the next `ORDER BY`/`LIMIT`/end-of-string and
+asserts `is_active` does not appear inside it. The test now correctly
+encodes the spec rule (no `is_active` filter) while permitting the column to
+be selected. With this change the suite is green.
 
 ## Scenario-by-scenario verification
 
@@ -84,29 +98,6 @@ Column names in every builder match the SQL in `src/sql/schema.sql`:
 `citations(run_id, domain, url, domain_type)`. The `competitor_mentions` insert
 is correctly cast to `jsonb` via `$7::jsonb`.
 
-## Failure
-
-One test case fails:
-
-**`prompt builders > buildListPrompts returns all prompts for a brand`**
-
-The assertion `expect(n).not.toMatch(/is_active/)` rejects the substring
-`is_active` anywhere in the emitted SQL. The implementation's
-`buildListPrompts` correctly SELECTs the `is_active` column (so the calling
-code can populate `Prompt.isActive`) without adding a WHERE filter on it —
-which is the actual spec requirement: `listPrompts` returns ALL prompts for a
-brand, while `listActivePrompts` is the variant that filters to
-`is_active = true`.
-
-The implementation behavior is correct per the build plan. The test assertion
-is over-strict — it should check the WHERE clause does not constrain on
-`is_active` (e.g. `not.toMatch(/WHERE [^)]*is_active/)`), not that the column
-name is absent from the entire query.
-
-The chunk's own test file therefore reports a failure even though the
-implementation matches spec. A fix cycle should relax the assertion to target
-the WHERE clause rather than the full query string.
-
 ## Other notes
 
 - `runMigration(sqlText)` calls `sql.query(sqlText)` with a single argument.
@@ -126,8 +117,7 @@ the WHERE clause rather than the full query string.
 
 The implementation satisfies all three required QA scenarios (§2.5, §2.6,
 §2.7) and covers every helper named in the build plan with correct shapes,
-schemas, and parameterization. However, the chunk's own test suite reports
-1 failing case (a flawed assertion in `buildListPrompts`), so the build is not
-green.
+schemas, and parameterization. The test suite is now fully green
+(40 passed / 0 failed) after the fix iteration 3 assertion rescope.
 
-Overall: fail
+Overall: pass
