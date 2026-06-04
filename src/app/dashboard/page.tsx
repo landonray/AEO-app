@@ -1,4 +1,3 @@
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { OverviewTab } from '@/components/dashboard/OverviewTab';
@@ -21,17 +20,17 @@ function buildOverviewUrl(
   return url.toString();
 }
 
-async function getOriginFromHeaders(): Promise<string> {
-  const h = await headers();
-  const host = h.get('host') ?? `localhost:${process.env.PORT ?? '4810'}`;
-  const proto =
-    h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
-  return `${proto}://${host}`;
+// Server-to-self call on the same machine: always target the local loopback,
+// never the public Host header. Through a tunnel (e.g. Cloudflare Access),
+// using the public origin would route this back out and hit the auth wall,
+// returning an HTML login page instead of JSON.
+function getInternalOrigin(): string {
+  return `http://127.0.0.1:${process.env.PORT ?? '4810'}`;
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const params = (await searchParams) ?? {};
-  const origin = await getOriginFromHeaders();
+  const origin = getInternalOrigin();
   const url = buildOverviewUrl(origin, params.days, params.model);
 
   const res = await fetch(url, { cache: 'no-store' });
