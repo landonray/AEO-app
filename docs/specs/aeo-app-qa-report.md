@@ -1,230 +1,171 @@
-# Luminaire — Integration QA Report (Stage 5)
+# Luminaire — Integration QA Report (Stage 5, iteration 2)
 
-This is the integration-layer QA pass that runs after all 31 chunk-level QA reports passed. Scope per the pipeline instructions:
+This is the second pass of integration-layer QA, after fix cycle 1 addressed the issues called out in iteration 1.
 
-- Cross-chunk behavior that needs the whole feature working together.
-- End-to-end UI flows the chunk QAs could not verify in isolation.
-- Cross-cutting concerns (auth, error paths, data flow across chunks).
-- Anything in the QA plan that was not assigned to a specific chunk.
-
-Trust-but-verify on chunk-scoped scenarios — they are not re-run here unless I found a specific reason to suspect a regression.
+Scope is the same as iteration 1 per the pipeline instructions: cross-chunk behavior, end-to-end UI flows, cross-cutting concerns, and any QA-plan items not assigned to a specific chunk. Chunk-scoped scenarios are trusted unless there's reason to suspect a regression.
 
 ## TL;DR
 
-The product does not run end-to-end. There is a single root-cause integration bug that breaks the entire database layer — every API route that touches the DB will throw at runtime, `npm run db:migrate` will fail, `next build` will fail TypeScript checking, and the dashboard cannot load. Two additional TypeScript errors block the production build entirely.
+Fix cycle 1 successfully resolved the DB-layer integration bug that blocked everything in iteration 1. The product now builds, the migration applies idempotently against a real Neon database, the full vitest suite still passes, and 6 of the 7 Playwright onboarding scenarios in §9.7 pass end-to-end against the dev server.
 
-Details below. The 31 chunk-level QA reports did not catch this because every chunk that touched the DB mocked the database boundary in its unit tests — no test in the suite exercises the real `@neondatabase/serverless` API surface, so the wrong method name (`sql.query(...)` instead of `sql(...)`) was never executed against the real library.
+However, one e2e scenario — §9.7.f "Launch Tracking redirects to / showing dashboard" — fails. The root cause is a real product regression introduced by chunk 30 that the chunk-level QA explicitly deferred to this stage and that iteration 1 could not surface because the DB bug fired first.
 
 ## Summary
 
 | # | Scenario | Result |
 |---|---|---|
-| 1 | TypeScript build (`next build`) succeeds | **fail** |
-| 2 | Database layer wiring — `sql.query()` works on `@neondatabase/serverless` v0.10.4 | **fail** |
-| 3 | `npm run db:migrate` script runs to completion against a Postgres URL | **fail** (same root cause as #2) |
-| 4 | `GET /api/setup-db` returns table status from a real DB | **fail** (same root cause) |
-| 5 | `POST /api/setup-db` applies the schema | **fail** (same root cause) |
-| 6 | `GET /api/brand` returns primary brand or `null` | **fail** (same root cause) |
-| 7 | `POST /api/onboarding/complete` inserts brand + competitors + prompts | **fail** (3 additional broken call sites) |
-| 8 | `POST /api/cron/run` runs the daily batch | **fail** (same root cause) |
-| 9 | Dashboard server components (`/dashboard`, `/dashboard/prompts`, `/dashboard/sources`) load | **fail** (same root cause) |
-| 10 | Root entry router (`/`) routes user to setup / onboarding / dashboard correctly | **fail** (server-side fetch of `/api/setup-db` throws → all paths land on `/setup`) |
-| 11 | Onboarding e2e flow (Playwright §9.7) passes | **fail** (server-side fetch from `/` redirects to `/setup`, onboarding never renders) |
-| 12 | Vitest unit + route-handler suite passes | pass (485 / 485) |
-| 13 | `.gitignore` excludes `.env`, `.env.*`, `.env.local`; `.env.example` tracked | pass |
-| 14 | No client component reads `process.env.*` (no server-side secrets reach the browser) | pass |
-| 15 | Cron auth uses `crypto.timingSafeEqual` over equal-length buffers | pass |
-| 16 | README + cron docs + chunk QA reports internally consistent with shipped files | pass |
+| 1 | TypeScript build (`next build`) succeeds | **pass** |
+| 2 | DB layer wiring — `sql()` works on `@neondatabase/serverless` v0.10.4 at runtime | **pass** |
+| 3 | `npm run db:migrate` runs to completion against the real Neon DB | **pass** |
+| 4 | Schema applies idempotently (re-run is a no-op) | **pass** |
+| 5 | Vitest unit + route-handler suite passes | **pass** (485 / 485) |
+| 6 | `.gitignore` excludes `.env`, `.env.*`, `.env.local`; `.env.example` is committed | **pass** |
+| 7 | No client component reads `process.env.*` (no server-side secrets reach the browser) | **pass** |
+| 8 | Cron auth uses `crypto.timingSafeEqual` over equal-length hashed buffers | **pass** |
+| 9 | Playwright §9.7.a — Step indicator shows Website → Analyzing → Review & Launch | **pass** |
+| 10 | Playwright §9.7.b — Submit on Enter and arrow click both work | **pass** |
+| 11 | Playwright §9.7.c — Loading spinner shows during analyze; UI does not freeze | **pass** |
+| 12 | Playwright §9.7.d — Step 3 fields inline-editable; X removes; order preserved | **pass** |
+| 13 | Playwright §9.7.e — "Start Over" returns to Step 1 and discards crawl data | **pass** |
+| 14 | Playwright §9.7.f — "Launch Tracking" → redirect to `/` showing dashboard | **fail** |
+| 15 | Playwright §9.7.g — No "+ Add" button on Step 3 prompts | **pass** |
+| 16 | README + cron docs + chunk QA reports internally consistent with shipped files | **pass** |
 
-Final result: **fail.** Scenarios 1–11 share a single root cause (#2) plus two unrelated type errors (Tabs.tsx, google-aio.test.ts). Fixing #2 unblocks #3 through #11 with no further code changes.
+Final result: **fail.** Scenario #14 is a real product regression. Single-issue scope this iteration — once it is fixed, the pipeline can advance.
+
+## How this iteration differs from iteration 1
+
+Iteration 1 found that every DB-touching route threw at runtime because the central `run()` helper called a non-existent `sql.query(...)` method on the function returned by `@neondatabase/serverless` v0.10.4. That single root cause cascaded into nine of the eleven `fail` results in that report. Two unrelated TypeScript errors (`Tabs.tsx`, `google-aio.test.ts`) also blocked `next build`.
+
+Fix cycle 1 (commit `04d7a8e`) addressed all of these:
+
+- Replaced `sql.query(stringSql, params)` with `sql(stringSql, params)` everywhere it was called — `src/lib/queries.ts` (the `run()` helper and `runMigration()`), `src/app/api/onboarding/complete/route.ts` (three call sites), and `scripts/migrate.ts`.
+- Reworked `runMigration()` and the standalone migration script to split the multi-statement schema into individual statements and run them as a single `sql.transaction([...])` so the migration is atomic.
+- Updated the onboarding/complete route test mock to make the mocked `sql` itself a callable with a `.transaction` property, matching the new production API surface.
+- Fixed `Tabs.tsx`: `TabsProps<T>` now `Omit`s `onChange` from `HTMLAttributes` so the custom `(value: T) => void` signature does not conflict with the DOM `FormEventHandler`.
+- Fixed `google-aio.test.ts:164`: extended the runtime-pushed `references` fixture entry with the required `type`, `title`, and `source` fields.
+
+I re-verified each of these fixes (scenarios 1–5 above). They all hold.
 
 ## Scenario detail
 
 ### 1. `next build` succeeds
 
-**What I verified.** Ran `npx next build` with a placeholder `DATABASE_URL`. The Turbopack build itself compiles successfully ("Compiled successfully in 27.5s"), but the post-compile TypeScript check fails with eight TS2339 / TS2345 / TS2430 errors:
+**What I verified.** Ran `npx next build` with a placeholder `DATABASE_URL` and all other env vars set to placeholder values. Turbopack compiles in ~27s, the TypeScript check completes ("Finished TypeScript in 22.6s") with no errors, static page generation succeeds (4/4), and the build emits a complete route manifest covering all 18 app routes. Exit code 0.
 
-- `scripts/migrate.ts:23` — `Property 'query' does not exist on type 'NeonQueryFunction<false, false>'`.
-- `src/lib/queries.ts:102` — same error in the central `run()` helper used by every read/write query.
-- `src/lib/queries.ts:805` — same error in `runMigration()` used by `POST /api/setup-db`.
-- `src/app/api/onboarding/complete/route.ts:88, 107, 122` — three separate `sql.query(...)` calls inside the onboarding transaction.
-- `src/components/ui/Tabs.tsx:12` — interface `TabsProps<T>` incorrectly extends `HTMLAttributes<HTMLDivElement>` (unrelated type bug introduced in the UI primitives chunk).
-- `src/lib/llm/__tests__/google-aio.test.ts:164` — fixture object missing required `type`, `title`, `source` fields (test file only — does not block production).
+**Result.** Pass.
 
-`next build` exits 1 at the TypeScript step. The user cannot ship a production build of this app as-is.
+### 2. DB layer wiring at runtime
 
-**Result.** Fail.
+**What I verified.** Two pieces of evidence:
 
-### 2. DB layer wiring — `sql.query()` works on `@neondatabase/serverless` v0.10.4
+- Static: read the `@neondatabase/serverless` v0.10.4 type declarations. `NeonQueryFunction` exposes a callable `(string, params?)` signature and a `transaction` property. The code now calls `sql(built.sql, built.params)` and `sql.transaction([...])` — both match the documented API.
+- Dynamic: ran the standalone migration script (scenario #3 below) against the real Neon DB. It connected successfully, applied the schema, and exited 0. Then I ran a tiny one-off Node program against the same `DATABASE_URL` that queried `information_schema.tables` and `pg_indexes`. All five tables and all expected indexes are present.
 
-**What I verified.** `src/lib/db.ts` initializes the client correctly:
-
-```
-const sql: NeonQueryFunction<false, false> = neon(databaseUrl);
-```
-
-This part matches the library's API. The problem is what every caller does with that handle. `src/lib/queries.ts:102` (the central `run()` helper) calls:
-
-```
-await sql.query(built.sql, built.params)
-```
-
-`@neondatabase/serverless` v0.10.4 (the version pinned in `package.json` and installed in `node_modules`) does **not** have a `.query` method on the function returned by `neon(...)`. I confirmed by:
-
-- Reading the type declaration file (`node_modules/@neondatabase/serverless/index.d.ts`): `NeonQueryFunction` exposes only a tagged-template callable signature, an ordinary `(string, params)` callable signature, and a `transaction` method. No `query` property.
-- Running a one-off Node script: `const sql = neon('postgres://...'); typeof sql.query` → `undefined`.
-- Running Playwright against the dev server (see #11), which surfaced the runtime error in stderr: `TypeError: {imported module ./src/lib/db.ts}.sql.query is not a function at run (src/lib/queries.ts:102:28) at checkTables (src/lib/queries.ts:796:22) at buildStatus (src/app/api/setup-db/route.ts:11:36)`.
-
-The correct API for ordinary-function use is `await sql(stringSql, params)` (the function itself, called directly). The chunks shipped `.query(...)` everywhere instead.
-
-This is the single root-cause integration bug. All other DB-related fails in this report (scenarios #3–#11) are downstream effects.
-
-`grep` found six usage sites that all need to change:
-
-- `src/lib/queries.ts:102` — the central `run()` executor used by every read query helper.
-- `src/lib/queries.ts:805` — the `runMigration()` executor used by `POST /api/setup-db`.
-- `src/app/api/onboarding/complete/route.ts:88, 107, 122` — three direct calls inside the onboarding transaction.
-- `scripts/migrate.ts:23` — the standalone migration script invoked by `npm run db:migrate`.
-
-**Result.** Fail.
+**Result.** Pass.
 
 ### 3. `npm run db:migrate` runs to completion
 
-**What I verified.** `scripts/migrate.ts:23` calls `await sql.query(sqlText);` after reading `src/sql/schema.sql`. Per #2, this throws `TypeError: sql.query is not a function` at runtime. The README's setup walkthrough (step 3) tells the user to run this command — the user's very first setup action would fail.
-
-Did not need to run the command against a real `DATABASE_URL` to confirm — the runtime behavior is dictated by the library shape, and the static analysis already shows the type error.
-
-**Result.** Fail. (Downstream of #2.)
-
-### 4. `GET /api/setup-db` returns table status from a real DB
-
-**What I verified.** The handler calls `checkTables()` which calls the central `run()` helper which calls `sql.query(...)`. I confirmed this throws at runtime by booting the Next.js dev server via Playwright's `webServer` config and watching the request fail (stderr quoted in #2). The handler does not catch the error, so it surfaces to Next.js's error boundary and the response is 500.
-
-**Result.** Fail. (Downstream of #2.)
-
-### 5. `POST /api/setup-db` applies the schema
-
-**What I verified.** The POST handler calls `runMigration(schemaText)` in queries.ts. Same root cause. The "Run migration" button on the `/setup` page would always fail to apply the schema.
-
-**Result.** Fail. (Downstream of #2.)
-
-### 6. `GET /api/brand` returns primary brand or `null`
-
-**What I verified.** `getPrimaryBrand()` → `run(buildGetPrimaryBrand())` → `sql.query(...)`. Same root cause. Every dashboard server component starts by calling `getPrimaryBrand()`, so the entire dashboard depends on this route working.
-
-**Result.** Fail. (Downstream of #2.)
-
-### 7. `POST /api/onboarding/complete` inserts brand + competitors + prompts
-
-**What I verified.** The onboarding completion route has three sites of its own that call `sql.query(...)` directly (lines 88, 107, 122 in `src/app/api/onboarding/complete/route.ts`) — not via the central `run()` helper. So even if scenario #2 only fixed `queries.ts`, this route would still fail until those three call sites are also updated. Per the QA plan §9.6, this is the route that finalizes onboarding into a usable brand record — without it, no user can finish onboarding.
-
-**Result.** Fail. (Same root-cause family as #2 — three additional call sites with the same wrong method name.)
-
-### 8. `POST /api/cron/run` runs the daily batch
-
-**What I verified.** The cron route is structurally correct: it reads `CRON_SECRET` from env, validates the bearer with `crypto.timingSafeEqual` over SHA-256-hashed buffers (constant-time, equal-length — see #15), and on success calls `runBatch(prompts, brand, competitors)`. The batch then needs to read prompts/competitors from the DB and write runs/citations — both go through the broken `run()` helper. So a real cron call will return 500 ("Internal error") once it tries to load active prompts.
-
-**Result.** Fail. (Downstream of #2.)
-
-### 9. Dashboard server components load
-
-**What I verified.** Both `/dashboard/prompts/page.tsx` and `/dashboard/sources/page.tsx` are server components that call `getPrimaryBrand()` and `getLastRunTimestamp(brand.id)` directly. Both calls go through the central `run()` helper. Same root cause — these pages will throw on first render. `/dashboard/page.tsx` (Overview) fetches `/api/overview` server-side, which in turn calls multiple queries.ts helpers — same outcome.
-
-**Result.** Fail. (Downstream of #2.)
-
-### 10. Root entry router (`/`) routes correctly
-
-**What I verified.** `src/app/page.tsx` is a server component that:
-
-1. Calls `fetch(${origin}/api/setup-db)` server-side. Per #4 that returns 500.
-2. The router's error path is `if (!setupRes.ok) { redirect('/setup'); }`. So every visit to `/` redirects to `/setup` regardless of actual database state.
-3. The `/setup` page is a client component that, on mount, calls `fetch('/api/setup-db')` again. Per #4 that returns 500. The page surfaces "Could not check tables (500)" in its error banner — the user sees a permanent broken state.
-
-So the routing intent (no schema → `/setup`, no brand → onboarding, brand present → dashboard) collapses into a single "always go to `/setup` and show an error" path. None of the three intended states is reachable.
-
-**Result.** Fail.
-
-### 11. Onboarding Playwright e2e (§9.7)
-
-**What I verified.** Ran `E2E_PORT=6810 npx playwright test e2e/onboarding.spec.ts --grep "9.7.a"`. The Next dev server boot succeeds, but the first request fails as described in #10: `/` server-component fetches `/api/setup-db`, gets a 500 (because of the `sql.query` bug), redirects the user to `/setup`. The onboarding test asserts that `getByTestId('onboarding-progress')` becomes visible at `/` — that testid lives in `OnboardingFlow`, which never gets rendered, so the assertion times out at 20s.
-
-Playwright `page.route('**/api/brand', ...)` and friends only intercept browser-side fetches; the server-side fetch in `page.tsx` is **not** intercepted by Playwright, which is why the chunk-level QA's mocked tests passed but the integration-level reality fails. This is a real-environment issue, not a Playwright-config issue.
-
-I ran one test as proof of the failure mode. I did not run the remaining six tests in the file because they all start with the same `page.goto('/')` and would all fail for the same reason. Once the DB bug is fixed, the orchestrator/QA stage can re-run the onboarding suite.
-
-**Result.** Fail.
-
-### 12. Vitest unit + route-handler suite
-
-**What I verified.** Ran `mc_run_tests` over the full Vitest suite (run id `d69c4c3b-7347-400c-979c-485ad113f2f4`). 485 / 485 passed in 2.07s, 0 failures, 0 skipped.
-
-Important caveat — this **does not** falsify the bug above. The DB-touching modules are tested with their dependencies mocked:
-
-- `src/__tests__/db.test.ts` uses `vi.mock("@neondatabase/serverless", () => ({ neon: neonMock }))`, where `neonMock` returns a stub function. The test only asserts singleton behavior; it never calls `sql.query(...)`.
-- `src/lib/__tests__/queries.test.ts` only exercises the `buildXxx` SQL builders — it asserts the generated SQL strings + parameter arrays, never executes `run()`.
-- The API route tests (`src/app/api/*/__tests__/route.test.ts`) mock `@/lib/queries` entirely (`vi.mock('@/lib/queries', ...)`), so the broken `run()` function is never called.
-
-Net: the suite is internally consistent and catches changes inside each module, but no test in the codebase actually exercises the real `@neondatabase/serverless` API. That gap is exactly what this stage exists to surface.
-
-**Result.** Pass (the tests pass), but recorded for context — the suite would still pass even with the runtime DB bug present, which is why chunk QA missed it.
-
-### 13. `.gitignore` and `.env*` hygiene
-
-**What I verified.** `.gitignore` includes `.env`, `.env.*`, `.env.local`, `.env.production`, and the negation `!.env.example` so the template file is committed. `git ls-tree HEAD -- .env` returns nothing (the real file is not committed); `.env.example` is committed with placeholder values only (`REPLACE_ME` for the secrets, no real tokens). Matches QA plan §14.1.d.
+**What I verified.** Loaded the real `DATABASE_URL` from `.env`, ran `npm run db:migrate`. The script printed `Applied schema from .../src/sql/schema.sql` and exited 0. Confirmed via a separate query that the five expected tables (`brands`, `competitors`, `prompts`, `runs`, `citations`) and seven indexes (`idx_runs_created_at`, `idx_runs_prompt_id`, `idx_runs_model`, `idx_citations_run_id`, `idx_citations_domain`, `idx_competitors_brand_id`, `idx_prompts_brand_id`) all exist after the run.
 
 **Result.** Pass.
 
-### 14. No client component reads `process.env.*`
+### 4. Schema applies idempotently
 
-**What I verified.** `grep -rn "process.env" src/` returns 11 hits across `src/app/api/...`, `src/lib/...`, `src/app/page.tsx`, and `src/app/dashboard/page.tsx`. The only `process.env` reads in `src/app/*` are inside server components (no `'use client'` directive) and route handlers. `grep` for "use client" components that also reference `process.env` returned zero results. Matches QA plan §14.1.a / §14.1.b.
-
-I did not run the additional dashboard-HTML grep for env values (§14.1.b inner check) because the dashboard cannot render due to the DB bug. Once #2 is fixed, that check should be re-run, but the structural argument (no client component imports the env-reading modules) is already strong.
+**What I verified.** Ran `npm run db:migrate` a second time against the same DB. It printed the same "Applied schema" message and exited 0 — no SQL error from re-creating already-existing tables/indexes. The schema uses `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` throughout, and the runtime confirms that this works when wrapped in `sql.transaction([...])`. Matches QA-plan §2.1.
 
 **Result.** Pass.
 
-### 15. Cron bearer uses `crypto.timingSafeEqual` over equal-length buffers
+### 5. Vitest unit + route-handler suite
 
-**What I verified.** `src/app/api/cron/run/route.ts:28-35` SHA-256 hashes both `provided` and `expected` to 32-byte digests before passing them to `crypto.timingSafeEqual`. This avoids the length-leak that a raw `Buffer.from(string)` comparison would have. The function returns `false` on mismatch without short-circuiting on character index. Matches QA plan §14.2 / §16.4.
+**What I verified.** Ran `mc_run_tests` over the full Vitest suite (run id `095eda15-3332-4d6c-8c50-2ac1f2d9ebc9`). 485 / 485 passed in 2.22s, 0 failures, 0 skipped. Same caveat as iteration 1 — the DB-touching modules are unit-tested with their dependencies mocked, so the suite cannot catch a wrong neon method name on its own. But it does catch every change inside each module, and the fix-cycle changes did not regress any of the existing assertions.
 
 **Result.** Pass.
 
-### 16. README + cron docs + chunk QA internal consistency
+### 6. `.gitignore` and env hygiene
 
-**What I verified.** Already covered by Chunk 31's QA report. Re-skimmed the README, `.env.example`, `scripts/cron.mjs`, and the cron snippets — none of them depend on the broken DB layer, and all of them are internally consistent. The README's setup walkthrough is correct in shape (the steps are the right steps) but will fail in execution because step 3 (`npm run db:migrate`) hits the bug in #3.
+**What I verified.** `.gitignore` includes `.env`, `.env.*`, `.env.local`, `.env.production`, and the explicit negation `!.env.example` so the example template stays tracked. `git ls-tree HEAD -- .env` returns nothing — the real environment file is not committed. `.env.example` is committed with placeholder values only.
 
-**Result.** Pass (documentation is internally consistent; the bug is in the code paths the documentation tells the user to invoke).
+**Result.** Pass.
+
+### 7. No client component reads `process.env.*`
+
+**What I verified.** All `process.env` reads in the `src/app` tree live inside server components (no `'use client'` directive) and route handlers. No file that contains both `'use client'` and `process.env` exists. Matches QA-plan §14.1.a / §14.1.b.
+
+**Result.** Pass.
+
+### 8. Cron bearer uses constant-time comparison over hashed buffers
+
+**What I verified.** `src/app/api/cron/run/route.ts:28-35` SHA-256 hashes both `provided` and `expected` to 32-byte digests before passing them to `crypto.timingSafeEqual`. The function returns `false` on mismatch without early-exit on any character index. No bearer string is logged. Matches QA-plan §14.2 / §16.4.
+
+**Result.** Pass.
+
+### 9–15. Playwright onboarding suite (§9.7)
+
+**Set up.** Ran the entire `e2e/onboarding.spec.ts` file with `E2E_PORT=6812 npx playwright test --reporter=line` against the real Neon DB (schema applied per #3, no primary brand at the start of the run). Playwright's `webServer` config booted a fresh Next dev server on port 6812 with the real `DATABASE_URL`. Total wall clock: 1.4 minutes. Result: **6 passed, 1 failed.**
+
+The six passing scenarios (§9.7.a–e and §9.7.g) demonstrate that:
+
+- The root entry router (`src/app/page.tsx`) correctly server-side fetches `/api/setup-db` against the live DB (schema present), then `/api/brand` (no brand), and renders `OnboardingFlow`. This implicitly verifies that the chunk-30 routing decisions still work against a real database, not just the mocked-fetch Vitest tests in `src/app/__tests__/page.test.tsx` that chunk 30 added.
+- The browser-mocked `/api/onboarding/*` endpoints carry the user through the three-step wizard with correct state transitions, inline editing, and ordering — all chunk-29 behavior preserved post-fix.
+- The DB-layer fix does not break the API routes that the e2e indirectly exercises (`/api/setup-db`, `/api/brand`).
+
+**Result.** Six pass, one fail. Details on the failing case below.
+
+### 14. §9.7.f — "Launch Tracking" redirects to `/` showing dashboard
+
+**Result.** **Fail.**
+
+**What the test does.** Walks the user through onboarding into Step 3, clicks the "Launch Tracking" button, then asserts that `getByTestId('dashboard-placeholder')` becomes visible (the test's stand-in for "the dashboard is now rendering").
+
+**What happens at runtime.** Playwright captures the final page state at failure time. The DOM is back at Step 1 of onboarding — the URL input is visible again, the "Analyze website" button is rendered, and there is no dashboard element on screen. Specifically:
+
+```
+- banner:
+  - group "Onboarding progress": Website Analyzing Review & Launch
+- main:
+  - heading "Track your AI search visibility" [level=1]
+  - paragraph: Enter your website and we'll set up tracking automatically.
+  - textbox "Website URL"
+  - button "Analyze website"
+```
+
+**Why this fails — root cause.** Two compounding issues, both architectural rather than bugs in the fix cycle:
+
+1. The `dashboard-placeholder` testid no longer exists anywhere in `src/`. A grep across the whole tree finds it only in `e2e/onboarding.spec.ts`. In chunk 29, `src/app/page.tsx` was a `'use client'` component that included a `<main data-testid="dashboard-placeholder">` branch when `/api/brand` returned a brand. Chunk 30 replaced `page.tsx` with a server component that instead calls `redirect('/dashboard')` when a brand exists. The dashboard route itself (`src/app/dashboard/page.tsx`) renders `DashboardShell` + `OverviewTab` — it has no placeholder testid. So the assertion has no element to find regardless of what else happens.
+
+2. The mock for `/api/onboarding/complete` records the call and sets `state.brand` in the test fixture, but it does not actually insert a brand into the real Neon DB. After Launch, Next reloads `/`, page.tsx server-side fetches `/api/brand` — and `page.route('**/api/brand', ...)` only intercepts browser-side fetches, so the server-side fetch hits the real route handler against the live DB, which still has no brand. page.tsx therefore renders `OnboardingFlow` again, dropping the user back at Step 1.
+
+So even if the test were updated to look for a real `/dashboard` testid, the test fixture would still fail because the mocked `complete` route doesn't persist any state the server-rendered page can read.
+
+**Why this was not caught earlier.**
+
+- Chunk 29's QA verified §9.7.f against chunk 29's own client-component `page.tsx`, which did read from `page.route()`-mocked `/api/brand` and did render `dashboard-placeholder`. At that time the test was correct against the architecture in tree.
+- Chunk 30 replaced `page.tsx` with a server component but did not touch `e2e/onboarding.spec.ts`. The chunk 30 QA report explicitly deferred end-to-end verification: *"This is a code-read, not an end-to-end Playwright pass; the integration QA stage at the pipeline's end is the right place for the full click-through."*
+- Iteration 1 of this integration QA could not surface this because the `sql.query` DB bug fired first — every server-side `/api/setup-db` call returned 500, every `/` request redirected to `/setup`, and Playwright timed out on Step 1 ever appearing. The §9.7.f-specific failure was hidden behind that earlier crash.
+
+**Recommended fix scope (for fix cycle 2).** Two paths; either is acceptable.
+
+- *Update the e2e to match the post-chunk-30 architecture (preferred).* Change §9.7.f to (a) make the `/api/onboarding/complete` mock actually call the real endpoint so a real brand row is inserted, and (b) assert that the URL becomes `/dashboard` and that a dashboard element (e.g. `DashboardShell`-rendered heading or one of the existing tab testids) becomes visible. The test cleanup will need to delete the inserted brand row in an `afterEach` so subsequent runs start clean.
+- *Update the dashboard route to render a `dashboard-placeholder` element.* Add `data-testid="dashboard-placeholder"` to a wrapper inside `src/app/dashboard/page.tsx` (or `DashboardShell`) so the existing e2e passes. This is the smaller code change but leaves the test fixture's "mock complete doesn't insert" problem unresolved — it would still fail because page.tsx's server-side `/api/brand` call returns null.
+
+Path 1 is the right answer. Path 2 alone is insufficient.
+
+### 16. Documentation consistency
+
+**What I verified.** Already covered by chunk 31's QA report. Re-skimmed the README, `.env.example`, `scripts/cron.mjs`, and the cron snippets — nothing in the docs references the broken DB code path, and the setup walkthrough's step 3 (`npm run db:migrate`) now actually succeeds.
+
+**Result.** Pass.
 
 ## Out of scope / not re-verified
 
-Per the Stage 5 instructions, chunk-scoped scenarios are trusted unless there's reason to suspect a regression. Chunk-scoped scenarios I did **not** re-run here:
+Per the Stage 5 instructions, chunk-scoped scenarios are trusted unless there's reason to suspect a regression. None of the fix-cycle-1 changes crossed into the following areas, so they were not re-run here:
 
 - Parser unit tests (§3.1–§3.5) — chunk 8 QA verified.
 - Metrics tests (§8.1–§8.9) — chunk 15 QA verified.
-- Orchestrator tests (§7.1–§7.8) — chunk 16 QA verified at the unit level. Note that at runtime the orchestrator will fail when it tries to persist runs/citations through the broken `run()` helper — that's a downstream effect of #2, not a separate bug.
-- Per-chunk UI tests (§12.1–§12.7) — chunks 23–28 QA verified at the component level.
-- Cron auth tests (§10.1–§10.7) — chunk 22 QA verified.
-
-If the fix-cycle stage modifies code in any of these areas while fixing #2, the affected chunk's QA scenarios should be re-run.
-
-## Recommended fix scope (for the fix cycle)
-
-Single root cause for nine of the eleven fails:
-
-- Replace every `sql.query(stringSql, params)` call with `sql(stringSql, params)`. Six call sites:
-  - `src/lib/queries.ts:102` (the central `run()` helper — fixes all queries.ts consumers).
-  - `src/lib/queries.ts:805` (the `runMigration()` helper).
-  - `src/app/api/onboarding/complete/route.ts:88, 107, 122`.
-  - `scripts/migrate.ts:23`.
-
-Two additional independent TypeScript errors that block the production build:
-
-- `src/components/ui/Tabs.tsx:12` — fix the `TabsProps<T>` generic so it extends `HTMLAttributes<HTMLDivElement>` correctly.
-- `src/lib/llm/__tests__/google-aio.test.ts:164` — extend the fixture object with the missing `type`, `title`, `source` fields. Test-file only, does not affect runtime, but `next build`'s type check still flags it.
-
-Once all eight TypeScript errors are resolved, the fix cycle should re-run:
-
-- `next build` — to confirm the type check passes.
-- `npm run db:migrate` against a Neon branch — to confirm the schema applies.
-- The Playwright onboarding suite — to confirm the full flow renders end-to-end.
+- Orchestrator tests (§7.1–§7.8) — chunk 16 QA verified at the unit level.
+- Per-chunk UI component tests (§12.1–§12.7) — chunks 23–28 QA verified at the component level.
+- Cron auth tests (§10.1–§10.7) — chunk 22 QA verified; the cron route code itself is also spot-checked in scenario #8 here.
+- Setup page UI flow on `/setup` — chunk 30 QA code-reviewed; with the DB layer now working, a real round-trip click through `/setup` → "Run migration" → "Re-check" → "Continue" would now work end-to-end against the real DB. Not formally exercised here because no chunk-scoped scenario remains in doubt; flagging it as the natural next acceptance check once §9.7.f is fixed.
 
 Overall: fail
