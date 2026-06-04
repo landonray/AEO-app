@@ -1,4 +1,4 @@
-# Chunk 7 QA — Domain Classifier
+# Chunk 7 QA — Domain Classifier (re-verified after fix iteration 2)
 
 This chunk introduces `src/lib/classify.ts`, a pure function `classify(url, brand, competitors)` that returns a `DomainType` value (`You`, `Competitor`, `UGC`, `Editorial`, `Reference`, `Institutional`, `Corporate`, or `Other`). The scenarios in scope are all of §3.6 from the QA plan: scenarios 3.6.a through 3.6.o.
 
@@ -26,9 +26,9 @@ All 15 in-scope scenarios pass. The chunk also ships 19 additional precedence an
 
 ## How verification was performed
 
-The classifier is a pure function with no I/O, so verification is done as unit tests via Vitest. I ran the chunk's test file through `mc_run_tests` and reviewed the implementation against the QA plan's table.
+The classifier is a pure function with no I/O, so verification is done as unit tests via Vitest. I ran the chunk's test file through `mc_run_tests` against the current (post-iteration-2) implementation and reviewed the code against the QA plan's §3.6 table.
 
-**Test run summary** — `vitest`, **34 passed / 0 failed / 0 skipped**, 1.1s, exit code 0.
+**Test run summary** — `vitest`, **34 passed / 0 failed / 0 skipped**, ~1.1s, exit code 0, run id `f985d180-6125-482a-98e9-b25068d47720`.
 
 ## §3.6.a — Brand domain → `You`
 
@@ -88,7 +88,7 @@ This case also demonstrates that the reference list correctly takes precedence o
 
 ## §3.6.j — UGC list precedence over `.org`
 
-The QA plan flags this scenario as documenting the precedence rule even though no real UGC site lives on a `.org` TLD. The test exercises the rule using `reddit.com`: even when `.org` is present in the institutional TLD list, the UGC list check runs first, so a hypothetical UGC `.org` would still classify as `UGC`. The test makes the ordering observable.
+The QA plan flags this scenario as documenting the precedence rule even though no real UGC site lives on a `.org` TLD. The test exercises the rule using `reddit.com`: the UGC list check runs before the institutional TLD check, so a hypothetical UGC `.org` would still classify as `UGC`. The test makes the ordering observable.
 
 **Result: pass.**
 
@@ -130,4 +130,6 @@ The QA plan flags this scenario as documenting the precedence rule even though n
 - **Garbage non-URL strings fall through to `Corporate`, not `Other`.** This matches the refined spec's "everything else → Corporate" rule (§11.6). `Other` is only returned for an empty/unresolvable hostname.
 - **URL parsing is robust to URLs with ports and to plain `http://`** — both classify on host as expected.
 
-Overall: **pass.** All 15 in-scope §3.6 scenarios verified pass; the chunk additionally locks in 19 precedence and edge-case behaviors with tests, all green.
+All 15 in-scope §3.6 scenarios verified pass against the current (post-iteration-2) implementation; the chunk additionally locks in 19 precedence and edge-case behaviors with tests, all green.
+
+Overall: pass
