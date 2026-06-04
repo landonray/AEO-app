@@ -21,10 +21,10 @@ export default defineConfig({
     navigationTimeout: 60_000,
   },
   webServer: {
-    command: `npx next dev -p ${PORT}`,
+    command: `npx next dev -p ${PORT} --hostname 127.0.0.1`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
+    timeout: 300_000,
     env: {
       DATABASE_URL: process.env.DATABASE_URL ?? 'postgres://placeholder@localhost/placeholder',
       NEXT_TELEMETRY_DISABLED: '1',
