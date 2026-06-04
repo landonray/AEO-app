@@ -6,25 +6,25 @@
 import { SOURCE_CHART_MAX_DOMAINS } from '@/lib/chartPalette';
 import type { TrendRow } from '@/types';
 
-// Format an ISO `YYYY-MM-DD` weekStart as "MMM DD" (e.g. "Nov 17") per §15.B.
+// Format an ISO `YYYY-MM-DD` date as "MMM DD" (e.g. "Nov 17") per §15.B.
 // Returns the original string if it cannot be parsed so we never break
 // rendering for malformed data.
-export function formatWeekLabel(weekStart: string): string {
-  if (!weekStart || typeof weekStart !== 'string') return String(weekStart ?? '');
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(weekStart);
-  if (!m) return weekStart;
+export function formatDayLabel(isoDate: string): string {
+  if (!isoDate || typeof isoDate !== 'string') return String(isoDate ?? '');
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!m) return isoDate;
   const year = Number(m[1]);
   const month = Number(m[2]) - 1;
   const day = Number(m[3]);
   const d = new Date(Date.UTC(year, month, day));
-  if (Number.isNaN(d.getTime())) return weekStart;
+  if (Number.isNaN(d.getTime())) return isoDate;
   const monthName = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
   const dayLabel = String(day).padStart(2, '0');
   return `${monthName} ${dayLabel}`;
 }
 
 // Compute the top-N source keys from a Sources retrieval trend by summing
-// each (non-weekStart) entity's values across all weeks. Used to cap the
+// each (non-date) entity's values across all days. Used to cap the
 // SourceChart at 5 domains per build plan.
 export function topSourceKeys(
   data: ReadonlyArray<TrendRow>,
@@ -34,7 +34,7 @@ export function topSourceKeys(
   const totals = new Map<string, number>();
   for (const row of data) {
     for (const [key, value] of Object.entries(row)) {
-      if (key === 'weekStart') continue;
+      if (key === 'date') continue;
       if (typeof value !== 'number' || Number.isNaN(value)) continue;
       totals.set(key, (totals.get(key) ?? 0) + value);
     }
@@ -55,7 +55,7 @@ export function isEmptyTrend(data: unknown): boolean {
 // then each competitor in the order the caller passed (which preserves
 // rank from §16's palette assignment). Competitors with no data in *any*
 // row are still emitted — Recharts will simply draw nothing — so the
-// legend stays stable as new weeks accumulate.
+// legend stays stable as new days accumulate.
 export interface VisibilitySeries {
   dataKey: string;
   isBrand: boolean;

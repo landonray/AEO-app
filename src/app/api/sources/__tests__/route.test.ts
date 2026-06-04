@@ -187,15 +187,15 @@ describe('GET /api/sources (§11.3)', () => {
     expect(getRunsMock.mock.calls[0][0].days).toBe(7);
   });
 
-  it('builds a trend with per-week retrieval rates for top entities', async () => {
+  it('builds a trend with per-day retrieval rates for top entities', async () => {
     const now = new Date();
-    const thisWeek = now.toISOString();
-    const lastWeek = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+    const today = now.toISOString();
+    const earlierDay = new Date(now.getTime() - 7 * 86_400_000).toISOString();
 
     getPrimaryBrandMock.mockResolvedValueOnce(brand);
     getRunsMock.mockResolvedValueOnce([
-      { id: 'r1', createdAt: thisWeek },
-      { id: 'r2', createdAt: lastWeek },
+      { id: 'r1', createdAt: today },
+      { id: 'r2', createdAt: earlierDay },
     ]);
     getCitationsMock.mockResolvedValueOnce([
       { runId: 'r1', domain: 'reddit.com', url: 'https://reddit.com/a', domainType: 'UGC' },
@@ -210,7 +210,7 @@ describe('GET /api/sources (§11.3)', () => {
     expect(Array.isArray(body.trend)).toBe(true);
     expect(body.trend.length).toBeGreaterThanOrEqual(1);
     for (const row of body.trend) {
-      expect(typeof row.weekStart).toBe('string');
+      expect(typeof row.date).toBe('string');
       expect(typeof row.brand).toBe('number');
       expect(row['reddit.com']).toBeGreaterThanOrEqual(0);
       expect(row['reddit.com']).toBeLessThanOrEqual(1);

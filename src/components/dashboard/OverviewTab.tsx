@@ -33,7 +33,7 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
             <div>
               <h3 className="text-[13px] font-semibold text-foreground">Visibility Trend</h3>
               <p className="text-[11px] text-muted-foreground">
-                Weekly brand visibility vs competitors.
+                Daily brand visibility vs competitors.
               </p>
             </div>
           </header>

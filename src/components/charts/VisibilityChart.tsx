@@ -20,7 +20,7 @@ import type { TrendRow } from '@/types';
 
 import {
   buildVisibilitySeries,
-  formatWeekLabel,
+  formatDayLabel,
   isEmptyTrend,
 } from './chartSeries';
 
@@ -127,7 +127,7 @@ export function VisibilityChart({
   const series = buildVisibilitySeries(competitors);
   const chartData = data.map((row) => ({
     ...row,
-    weekLabel: formatWeekLabel(row.weekStart),
+    dateLabel: formatDayLabel(row.date),
   }));
 
   return (
@@ -136,7 +136,7 @@ export function VisibilityChart({
         <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
           <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="3 3" vertical={false} />
           <XAxis
-            dataKey="weekLabel"
+            dataKey="dateLabel"
             tick={{ fill: '#8b8b92', fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: CHART_GRID_STROKE }}

@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import type { TrendRow } from '@/types';
 
 import {
-  formatWeekLabel,
+  formatDayLabel,
   isEmptyTrend,
   topSourceKeys,
 } from './chartSeries';
@@ -151,7 +151,7 @@ export function SourceChart({
 
   const chartData = data.map((row) => ({
     ...row,
-    weekLabel: formatWeekLabel(row.weekStart),
+    dateLabel: formatDayLabel(row.date),
   }));
 
   return (
@@ -172,7 +172,7 @@ export function SourceChart({
           </defs>
           <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="3 3" vertical={false} />
           <XAxis
-            dataKey="weekLabel"
+            dataKey="dateLabel"
             tick={{ fill: '#8b8b92', fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: CHART_GRID_STROKE }}

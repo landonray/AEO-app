@@ -49,15 +49,6 @@ function competitorVisibility(
   return competitorMentionedCount(runs, competitorName) / runs.length;
 }
 
-function getSundayUTC(date: Date): Date {
-  const d = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
-  const dow = d.getUTCDay();
-  d.setUTCDate(d.getUTCDate() - dow);
-  return d;
-}
-
 function formatYMD(date: Date): string {
   const y = date.getUTCFullYear();
   const m = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -159,10 +150,10 @@ export function computeVisibilityChange(
 }
 
 // --------------------------------------------------------------------------
-// §13.6 Weekly visibility trend
+// §13.6 Daily visibility trend
 // --------------------------------------------------------------------------
 
-export function computeWeeklyTrend(
+export function computeDailyTrend(
   runs: ReadonlyArray<RunWithTime>,
   _brand: { name: string } | null | undefined,
   competitors: ReadonlyArray<{ name: string }>,
@@ -177,8 +168,7 @@ export function computeWeeklyTrend(
     const t = new Date(r.createdAt).getTime();
     if (!Number.isFinite(t)) continue;
     if (t < cutoff) continue;
-    const sunday = getSundayUTC(new Date(t));
-    const key = formatYMD(sunday);
+    const key = formatYMD(new Date(t));
     let arr = buckets.get(key);
     if (!arr) {
       arr = [];
@@ -188,14 +178,14 @@ export function computeWeeklyTrend(
   }
 
   const keys = Array.from(buckets.keys()).sort();
-  return keys.map((weekStart) => {
-    const weekRuns = buckets.get(weekStart) ?? [];
+  return keys.map((date) => {
+    const dayRuns = buckets.get(date) ?? [];
     const row: TrendRow = {
-      weekStart,
-      brand: computeVisibility(weekRuns),
+      date,
+      brand: computeVisibility(dayRuns),
     };
     for (const c of competitors) {
-      row[c.name] = competitorVisibility(weekRuns, c.name);
+      row[c.name] = competitorVisibility(dayRuns, c.name);
     }
     return row;
   });
