@@ -91,6 +91,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps = {}) {
   function resetAll() {
     activeRunRef.current += 1;
     setStep(1);
+    setUrlValue('');
     setAnalyzingDomain('');
     setBrand({ brandName: '', description: '', category: '', targetAudience: '' });
     setPrompts([]);
