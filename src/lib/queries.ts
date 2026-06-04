@@ -716,6 +716,61 @@ export async function getCitations(params: GetCitationsParams): Promise<Citation
   return result.map(mapCitationRow);
 }
 
+export function buildGetCitationsForRunIds(runIds: ReadonlyArray<string>): BuiltQuery {
+  if (runIds.length === 0) {
+    return { sql: `SELECT 1 WHERE false`, params: [] };
+  }
+  return {
+    sql: `SELECT id, run_id, domain, url, domain_type, created_at
+          FROM citations
+          WHERE run_id = ANY($1::uuid[])
+          ORDER BY created_at DESC`,
+    params: [runIds],
+  };
+}
+
+export async function getCitationsForRunIds(
+  runIds: ReadonlyArray<string>,
+): Promise<Citation[]> {
+  if (runIds.length === 0) return [];
+  const result = await run<CitationBrandRow>(buildGetCitationsForRunIds(runIds));
+  return result.map(mapCitationRow);
+}
+
+export function buildGetRunsForPromptInWindow(
+  promptId: string,
+  days: number,
+  model?: ModelFilter,
+): BuiltQuery {
+  const args: unknown[] = [promptId, String(days)];
+  let modelClause = '';
+  if (isFilterableModel(model)) {
+    args.push(model);
+    modelClause = ` AND model = $${args.length}`;
+  }
+  return {
+    sql: `SELECT id, prompt_id, model, response, mentioned,
+                 position_score, sentiment, competitor_mentions,
+                 estimated_cost, created_at
+          FROM runs
+          WHERE prompt_id = $1
+            AND created_at >= now() - ($2 || ' days')::interval${modelClause}
+          ORDER BY created_at DESC`,
+    params: args,
+  };
+}
+
+export async function getRunsForPromptInWindow(
+  promptId: string,
+  days: number,
+  model?: ModelFilter,
+): Promise<Run[]> {
+  const result = await run<RunsBrandRow>(
+    buildGetRunsForPromptInWindow(promptId, days, model),
+  );
+  return result.map(mapRunRow);
+}
+
 // --------------------------------------------------------------------------
 // Setup / migration / last-updated
 // --------------------------------------------------------------------------
