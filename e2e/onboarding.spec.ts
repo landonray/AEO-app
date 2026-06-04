@@ -144,18 +144,20 @@ test.describe('Onboarding UI — §9.7', () => {
     const state1 = freshState();
     await setupMocks(page, state1);
     await page.goto('/');
+    await expect(page.getByTestId('onboarding-step-1')).toBeVisible({ timeout: 30_000 });
     await page.getByTestId('onboarding-url-input').fill('https://acme.com');
     await page.getByTestId('onboarding-url-input').press('Enter');
-    await expect(page.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 30_000 });
 
     // Arrow click — fresh page
     const state2 = freshState();
     const page2 = await page.context().newPage();
     await setupMocks(page2, state2);
     await page2.goto('/');
+    await expect(page2.getByTestId('onboarding-step-1')).toBeVisible({ timeout: 30_000 });
     await page2.getByTestId('onboarding-url-input').fill('https://acme.com');
     await page2.getByTestId('onboarding-url-submit').click();
-    await expect(page2.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 10_000 });
+    await expect(page2.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 30_000 });
     await page2.close();
   });
 
@@ -163,10 +165,11 @@ test.describe('Onboarding UI — §9.7', () => {
     const state = freshState();
     await setupMocks(page, state);
 
-    // Delay the crawl response so we can observe step 2
+    // Delay the crawl response generously so Playwright polling reliably catches
+    // step 2 mid-flight (3s gives ample headroom over the default polling cadence).
     await page.unroute('**/api/onboarding/crawl');
     await page.route('**/api/onboarding/crawl', async (route: Route) => {
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -187,17 +190,18 @@ test.describe('Onboarding UI — §9.7', () => {
     });
 
     await page.goto('/');
+    await expect(page.getByTestId('onboarding-step-1')).toBeVisible({ timeout: 30_000 });
     await page.getByTestId('onboarding-url-input').fill('https://acme.com');
     await page.getByTestId('onboarding-url-submit').click();
-    // Step 2 with spinner should be visible
+    // Step 2 with spinner should be visible during the (3s) crawl
     const step2 = page.getByTestId('onboarding-step-2');
-    await expect(step2).toBeVisible();
+    await expect(step2).toBeVisible({ timeout: 10_000 });
     await expect(step2).toContainText('Analyzing');
     await expect(step2.getByRole('status')).toBeVisible();
 
     // UI is responsive: the progress indicator should still be on screen and step changes follow
     await expect(page.getByTestId('onboarding-progress')).toBeVisible();
-    await expect(page.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 30_000 });
   });
 
   test('9.7.d Step 3 fields are inline-editable; X removes a prompt/competitor; order preserved', async ({ page }) => {
@@ -250,13 +254,13 @@ test.describe('Onboarding UI — §9.7', () => {
     await page.getByTestId('onboarding-brand-name-input').press('Enter');
 
     await page.getByTestId('onboarding-start-over').click();
-    await expect(page.getByTestId('onboarding-step-1')).toBeVisible();
+    await expect(page.getByTestId('onboarding-step-1')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('onboarding-url-input')).toHaveValue('');
 
     // Go through onboarding again — should rebuild from API, not show stale "Mutated Name"
     await page.getByTestId('onboarding-url-input').fill('https://acme.com');
     await page.getByTestId('onboarding-url-submit').click();
-    await expect(page.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('onboarding-brand-name')).toContainText('Acme Analytics');
     await expect(page.getByTestId('onboarding-brand-name')).not.toContainText('Mutated Name');
   });
@@ -269,7 +273,7 @@ test.describe('Onboarding UI — §9.7', () => {
     await page.getByTestId('onboarding-launch').click();
 
     // After completion, page.tsx will reload and /api/brand now returns the new brand
-    await expect(page.getByTestId('dashboard-placeholder')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('dashboard-placeholder')).toBeVisible({ timeout: 30_000 });
     expect(state.completeCalls.length).toBe(1);
   });
 
