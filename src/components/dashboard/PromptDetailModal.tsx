@@ -5,6 +5,7 @@ import { Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Badge,
+  Markdown,
   Modal,
   ModelIcon,
   MODEL_META,
@@ -185,10 +186,11 @@ function ModelCard({
           </div>
           {row.latestResponsePreview ? (
             <>
-              <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-muted-foreground">
-                {showFull ? row.latestResponseFull : row.latestResponsePreview}
-                {!showFull && truncated && '…'}
-              </p>
+              <Markdown className="mt-2">
+                {showFull
+                  ? row.latestResponseFull
+                  : `${row.latestResponsePreview}${truncated ? '…' : ''}`}
+              </Markdown>
               {truncated && (
                 <button
                   type="button"
