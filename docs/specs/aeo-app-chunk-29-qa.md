@@ -1,4 +1,4 @@
-# Chunk 29 QA — Onboarding Flow UI (after fix iteration 3)
+# Chunk 29 QA — Onboarding Flow UI (after fix iteration 4)
 
 ## Scope
 
@@ -12,13 +12,12 @@ Chunk 29 ships the three-step onboarding wizard:
 
 This QA stage verifies the QA-plan scenarios in §9.7 (a–g) ONLY.
 
-The branch now carries three fix-cycle commits on top of the original chunk 29 implementation:
+The branch now carries four fix-cycle commits on top of the original chunk 29 implementation:
 
-- iteration 1 (`9973353`) — `src/app/page.tsx` renders the wizard eagerly while `/api/brand` is in flight, eliminating the loading-spinner blocker the iteration-1 QA report flagged; Playwright/expect timeouts raised; `e2e/onboarding.spec.ts` warmup added.
+- iteration 1 (`9973353`) — `src/app/page.tsx` renders the wizard eagerly while `/api/brand` is in flight, eliminating the loading-spinner blocker; Playwright/expect timeouts raised; `e2e/onboarding.spec.ts` warmup added.
 - iteration 2 (`ea658d1`) — per-test waits inside `e2e/onboarding.spec.ts` bumped from 10s to 30s; the §9.7.c crawl delay raised from 900 ms → 3000 ms.
 - iteration 3 (`03b2a75`) — `next.config.ts` adds `allowedDevOrigins: ['127.0.0.1','localhost']` to silence Next 16's cross-origin HMR guard; `playwright.config.ts` pins the dev server's bind address to `127.0.0.1` via `--hostname` and bumps `webServer.timeout` to 300 s.
-
-There is no new code commit beyond `03b2a75` at the time of this report — the "iteration 4" the orchestrator referenced is being verified against the iteration-3 tree.
+- iteration 4 (`e08197c`) — adds `setUrlValue('')` to `resetAll()` in `OnboardingFlow.tsx` so the §9.7.e expectation that the URL input is empty after Start Over is satisfied.
 
 ## Verification approach
 
@@ -33,7 +32,7 @@ There is no new code commit beyond `03b2a75` at the time of this report — the 
 | §9.7.b Submit on Enter and arrow click both work | Playwright | pass |
 | §9.7.c Loading spinner shows during analyze; UI does not freeze | Playwright | pass |
 | §9.7.d Step 3 fields are inline-editable; X removes prompt/competitor; order preserved | Playwright | pass |
-| §9.7.e "Start Over" returns to Step 1 and discards crawl data | Playwright | **fail** |
+| §9.7.e "Start Over" returns to Step 1 and discards crawl data | Playwright | pass |
 | §9.7.f "Launch Tracking" → redirect to `/` showing dashboard | Playwright | pass |
 | §9.7.g No "+ Add" button on Step 3 prompts | Playwright | pass |
 | (supporting) URL normalization helper unit tests | Vitest `Step1Url.test.ts` | pass |
@@ -46,20 +45,17 @@ There is no new code commit beyond `03b2a75` at the time of this report — the 
 
 ### Playwright — `e2e/onboarding.spec.ts`
 
-Run with the iteration-3 configuration (`playwright.config.ts` bind to `127.0.0.1`, 300 s webServer timeout; `next.config.ts` with `allowedDevOrigins`). Total wall clock: **~1.1 min**, **6 passed, 1 failed**.
+Run with the iteration-4 tree on the same iteration-3 Playwright/Next configuration. Total wall clock: **52.6 s**, **7 passed, 0 failed**.
 
-Passing scenarios (verified end-to-end against a real Next.js dev server with `/api/*` mocked at the fetch boundary):
+All seven §9.7 a–g scenarios pass end-to-end against a real Next.js dev server with `/api/*` mocked at the fetch boundary:
 
 - `9.7.a Step indicator shows Website → Analyzing → Review & Launch`
 - `9.7.b Submit on Enter and arrow click both work`
 - `9.7.c Loading spinner shows during analyze and the UI does not freeze`
 - `9.7.d Step 3 fields are inline-editable; X removes a prompt/competitor; order preserved`
+- `9.7.e "Start Over" returns to Step 1 and discards crawl data`
 - `9.7.f "Launch Tracking" redirects to / showing dashboard`
 - `9.7.g No "+ Add" button exists on the prompts card (Q3/A12)`
-
-Failing scenario:
-
-- `9.7.e "Start Over" returns to Step 1 and discards crawl data` — fails on the assertion `await expect(page.getByTestId('onboarding-url-input')).toHaveValue('')` (line 258 of `e2e/onboarding.spec.ts`). The test reaches Step 3, mutates the brand name, clicks "Start Over", confirms Step 1 is visible, and then expects the URL input to be empty — but the URL field still carries the value the user typed before analyzing (`https://acme.com`).
 
 ## Per-scenario findings
 
@@ -85,10 +81,9 @@ Failing scenario:
 
 ### §9.7.e — "Start Over" returns to Step 1 and discards crawl data
 
-- **Verified:** Reached Step 3, mutated the brand name to "Mutated Name", clicked Start Over, confirmed Step 1 is visible. The test then asserts the URL input is empty as part of the "discards data" contract.
-- **Result:** **fail.**
-- **Details:** After Start Over, the URL input still contains `https://acme.com`. `OnboardingFlow.tsx`'s `resetAll()` resets `step`, `analyzingDomain`, `brand`, `prompts`, `competitors`, and `finalDomain`, and bumps `activeRunRef` to cancel any in-flight crawl — but it does **not** clear `urlValue`. When `Step1Url` re-mounts on the way back to step 1, its `useState(initialUrl)` re-initializes from the still-populated `urlValue`, so the input shows the stale URL. This is a real implementation gap relative to §9.7.e ("returns to Step 1 and discards crawl data" — the suite encodes the wider expectation that all wizard state, including the URL the user typed, is cleared).
-- **What needs to change in the next fix iteration:** add `setUrlValue('')` to `resetAll()` in `src/components/onboarding/OnboardingFlow.tsx`. No new tests are needed — the existing 9.7.e Playwright test will go green as soon as the bug is fixed.
+- **Verified:** Reached Step 3, mutated the brand name to "Mutated Name", clicked Start Over, confirmed Step 1 is visible AND the URL input is empty, re-onboarded with the same URL, confirmed Step 3 shows the API-returned "Acme Analytics" brand name (not the stale "Mutated Name").
+- **Result:** **pass.**
+- **Details:** The iteration-4 fix added `setUrlValue('')` to `resetAll()` in `OnboardingFlow.tsx`. The test that previously failed on `expect(getByTestId('onboarding-url-input')).toHaveValue('')` now passes.
 
 ### §9.7.f — "Launch Tracking" → redirect to `/` showing dashboard
 
@@ -102,6 +97,6 @@ Failing scenario:
 
 ## Decision
 
-§9.7 a, b, c, d, f, and g are all verified end-to-end against the running app and pass. §9.7.e is a real, single, narrowly-scoped bug in `OnboardingFlow.tsx`'s `resetAll()`. Per the QA contract for this chunk, any failing scenario flips the verdict.
+All seven §9.7 a–g scenarios for chunk 29 are verified end-to-end and pass. The unit tests on the URL normalizer also pass. No scenarios are blocked or unverified.
 
-Overall: fail
+Overall: pass
