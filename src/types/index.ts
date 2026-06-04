@@ -202,7 +202,10 @@ export interface ModelBreakdownRow {
   position: number | null;
   sentiment: Sentiment | null;
   citationCount: number;
+  /** First 300 chars of the latest response — shown collapsed by default. */
   latestResponsePreview: string;
+  /** The complete latest response — revealed via "See more". */
+  latestResponseFull: string;
 }
 
 export interface PromptDetailCitation {
