@@ -1,4 +1,39 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
+import { neon } from '@neondatabase/serverless';
+
+const TEST_BRAND_DOMAIN = 'acme.com';
+
+async function cleanTestBrand(): Promise<void> {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl || dbUrl.includes('placeholder')) return;
+  const sql = neon(dbUrl);
+  await sql(
+    `DELETE FROM citations WHERE run_id IN (
+       SELECT r.id FROM runs r
+       JOIN prompts p ON p.id = r.prompt_id
+       JOIN brands b ON b.id = p.brand_id
+       WHERE b.domain = $1
+     )`,
+    [TEST_BRAND_DOMAIN],
+  );
+  await sql(
+    `DELETE FROM runs WHERE prompt_id IN (
+       SELECT p.id FROM prompts p
+       JOIN brands b ON b.id = p.brand_id
+       WHERE b.domain = $1
+     )`,
+    [TEST_BRAND_DOMAIN],
+  );
+  await sql(
+    `DELETE FROM prompts WHERE brand_id IN (SELECT id FROM brands WHERE domain = $1)`,
+    [TEST_BRAND_DOMAIN],
+  );
+  await sql(
+    `DELETE FROM competitors WHERE brand_id IN (SELECT id FROM brands WHERE domain = $1)`,
+    [TEST_BRAND_DOMAIN],
+  );
+  await sql(`DELETE FROM brands WHERE domain = $1`, [TEST_BRAND_DOMAIN]);
+}
 
 interface MockState {
   brand: { id: string; name: string; domain: string; category: string | null; description: string | null } | null;
@@ -266,15 +301,32 @@ test.describe('Onboarding UI — §9.7', () => {
   });
 
   test('9.7.f "Launch Tracking" redirects to / showing dashboard', async ({ page }) => {
-    const state = freshState();
-    await setupMocks(page, state);
-    await reachStep3(page);
+    // This scenario writes to the real Neon DB: the mocked /api/onboarding/complete
+    // never persisted anything, so after window.location.assign('/') the server-rendered
+    // page.tsx didn't see a brand and dropped the user back at Step 1. We now let the
+    // real endpoint insert the brand, then assert the server-side redirect to /dashboard.
+    await cleanTestBrand();
+    try {
+      const state = freshState();
+      await setupMocks(page, state);
+      // Let the real /api/onboarding/complete endpoint handle the launch so that
+      // a brand row is actually inserted and the server-rendered / page can see it.
+      await page.unroute('**/api/onboarding/complete');
 
-    await page.getByTestId('onboarding-launch').click();
+      await reachStep3(page);
 
-    // After completion, page.tsx will reload and /api/brand now returns the new brand
-    await expect(page.getByTestId('dashboard-placeholder')).toBeVisible({ timeout: 30_000 });
-    expect(state.completeCalls.length).toBe(1);
+      await page.getByTestId('onboarding-launch').click();
+
+      // After completion, window.location.assign('/') triggers a server-side render of /
+      // which sees the brand and redirects to /dashboard. Wait for that final URL,
+      // then assert a real dashboard element is visible. Use 'domcontentloaded' rather
+      // than the default 'load' so we don't wait on every static asset to settle under
+      // the Next dev server.
+      await page.waitForURL('**/dashboard', { timeout: 30_000, waitUntil: 'domcontentloaded' });
+      await expect(page.getByTestId('dashboard-header')).toBeVisible({ timeout: 30_000 });
+    } finally {
+      await cleanTestBrand();
+    }
   });
 
   test('9.7.g No "+ Add" button exists on the prompts card (Q3/A12)', async ({ page }) => {
