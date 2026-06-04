@@ -1,9 +1,9 @@
-# Chunk 9 — LLM Gateway client — QA Report (after fix iteration 4)
+# Chunk 9 — LLM Gateway client — QA Report (after fix iteration 2)
 
 **Branch:** `pipeline-aeo-app-2245556e-chunk-9-llmgat`
 **Files under test:** `src/lib/llm/gateway.ts`, `src/lib/llm/__tests__/gateway.test.ts`
 **Test runner:** vitest (via `mc_run_tests`)
-**Result:** 20 passed / 0 failed / 0 skipped (1.137s)
+**Result:** 20 passed / 0 failed / 0 skipped (0.977s)
 
 ## Method
 
@@ -100,7 +100,7 @@ confirming the matching test cases in
 - totalPassed: 20
 - totalFailed: 0
 - totalSkipped: 0
-- durationMs: 1137
+- durationMs: 977
 
 ## Notes for the orchestrator
 
