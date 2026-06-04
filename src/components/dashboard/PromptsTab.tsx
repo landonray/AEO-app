@@ -62,6 +62,17 @@ export function filterByTopic<T extends { topic: string }>(
   return prompts.filter((p) => (p.topic ?? '').trim().toLowerCase() === q);
 }
 
+// /api/prompts/metrics lists prompts oldest-first (matches storage order on
+// the brand). Newly added prompts must appear at the top per spec §15 Tab 2
+// ("prepend the new row") / QA §12.4.b. We reverse the topic-filtered set so
+// the most recent row is rendered first without mutating the source array.
+export function prepareVisibleRows<T extends { topic: string }>(
+  prompts: T[],
+  topic: string,
+): T[] {
+  return filterByTopic(prompts, topic).slice().reverse();
+}
+
 function formatVisibility(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return '—';
@@ -274,7 +285,7 @@ export function PromptsTab({ fetchImpl }: PromptsTabProps) {
     [topics],
   );
   const visibleRows = useMemo(
-    () => filterByTopic(rows, topic),
+    () => prepareVisibleRows(rows, topic),
     [rows, topic],
   );
 

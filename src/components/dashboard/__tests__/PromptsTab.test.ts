@@ -3,6 +3,7 @@ import {
   buildMetricsUrl,
   distinctTopics,
   filterByTopic,
+  prepareVisibleRows,
   TOPIC_FILTER_ALL,
 } from '../PromptsTab';
 
@@ -67,5 +68,42 @@ describe('filterByTopic', () => {
 
   it('returns empty when nothing matches', () => {
     expect(filterByTopic(rows, 'Free tool')).toEqual([]);
+  });
+});
+
+describe('prepareVisibleRows', () => {
+  // The API lists prompts oldest-first. The UI must surface the most recent
+  // prompt at the top of the table to match the "prepend the new row" rule.
+  const rows = [
+    { id: '1-oldest', topic: 'Core' },
+    { id: '2', topic: 'Affiliate' },
+    { id: '3', topic: 'Core' },
+    { id: '4-newest', topic: 'Competitor' },
+  ];
+
+  it('reverses the rows so the most recent appears first', () => {
+    expect(prepareVisibleRows(rows, TOPIC_FILTER_ALL).map((r) => r.id)).toEqual([
+      '4-newest',
+      '3',
+      '2',
+      '1-oldest',
+    ]);
+  });
+
+  it('keeps the reverse order within a topic filter', () => {
+    expect(prepareVisibleRows(rows, 'Core').map((r) => r.id)).toEqual([
+      '3',
+      '1-oldest',
+    ]);
+  });
+
+  it('does not mutate the input array', () => {
+    const original = rows.slice();
+    prepareVisibleRows(rows, TOPIC_FILTER_ALL);
+    expect(rows).toEqual(original);
+  });
+
+  it('returns an empty array when nothing matches the filter', () => {
+    expect(prepareVisibleRows(rows, 'Free tool')).toEqual([]);
   });
 });
