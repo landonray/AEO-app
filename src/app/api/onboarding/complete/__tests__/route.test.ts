@@ -4,15 +4,15 @@ const primaryBrandExistsMock = vi.fn();
 const transactionMock = vi.fn();
 const queryMock = vi.fn();
 
-vi.mock('@/lib/db', () => ({
-  sql: {
-    query: (text: string, params: unknown[]) => {
-      queryMock(text, params);
-      return { text, params };
-    },
-    transaction: (...args: unknown[]) => transactionMock(...args),
-  },
-}));
+vi.mock('@/lib/db', () => {
+  const sqlFn = (text: string, params: unknown[]) => {
+    queryMock(text, params);
+    return { text, params };
+  };
+  (sqlFn as unknown as { transaction: (...a: unknown[]) => unknown }).transaction =
+    (...args: unknown[]) => transactionMock(...args);
+  return { sql: sqlFn };
+});
 
 vi.mock('@/lib/queries', () => ({
   primaryBrandExists: primaryBrandExistsMock,

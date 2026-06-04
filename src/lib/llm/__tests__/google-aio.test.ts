@@ -161,7 +161,13 @@ describe('callGoogleAIO', () => {
       if (!aio || !Array.isArray(aio.references)) {
         throw new Error('test fixture missing ai_overview references');
       }
-      aio.references.push({ url: 'https://acme.com/pricing', domain: 'acme.com' });
+      aio.references.push({
+        type: 'ai_overview_reference',
+        title: 'Acme CRM — Pricing',
+        url: 'https://acme.com/pricing',
+        domain: 'acme.com',
+        source: 'acme.com',
+      });
 
       const fetchMock = vi
         .fn<typeof fetch>()

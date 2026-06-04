@@ -99,7 +99,7 @@ function mapCitationRow(row: CitationBrandRow): Citation {
 }
 
 async function run<T = Record<string, unknown>>(built: BuiltQuery): Promise<T[]> {
-  const result = await sql.query(built.sql, built.params);
+  const result = await sql(built.sql, built.params);
   return result as T[];
 }
 
@@ -802,7 +802,33 @@ export async function checkTables(): Promise<SetupDbTableStatus[]> {
 }
 
 export async function runMigration(sqlText: string): Promise<void> {
-  await sql.query(sqlText);
+  const statements = splitSqlStatements(sqlText);
+  if (statements.length === 0) return;
+  await sql.transaction(statements.map((stmt) => sql(stmt)));
+}
+
+function splitSqlStatements(sqlText: string): string[] {
+  const out: string[] = [];
+  let buf = '';
+  let inSingle = false;
+  for (let i = 0; i < sqlText.length; i++) {
+    const ch = sqlText[i];
+    if (ch === "'" && sqlText[i - 1] !== '\\') {
+      inSingle = !inSingle;
+      buf += ch;
+      continue;
+    }
+    if (ch === ';' && !inSingle) {
+      const trimmed = buf.trim();
+      if (trimmed.length > 0) out.push(trimmed);
+      buf = '';
+      continue;
+    }
+    buf += ch;
+  }
+  const tail = buf.trim();
+  if (tail.length > 0) out.push(tail);
+  return out;
 }
 
 export function buildGetLastRunTimestamp(brandId: string): BuiltQuery {

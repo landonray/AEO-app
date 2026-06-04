@@ -85,7 +85,7 @@ function buildBrandQuery(input: {
   category: string;
   description: string;
 }) {
-  return sql.query(
+  return sql(
     `INSERT INTO brands (id, name, domain, is_primary, category, description)
      VALUES ($1, $2, $3, true, $4, $5)`,
     [input.id, input.name, input.domain, input.category, input.description],
@@ -104,7 +104,7 @@ function buildCompetitorsQuery(
     return `($${nameIdx}, $${domainIdx}, $1)`;
   });
   const text = `INSERT INTO competitors (name, domain, brand_id) VALUES ${valueClauses.join(', ')}`;
-  return sql.query(text, params);
+  return sql(text, params);
 }
 
 function buildPromptsQuery(
@@ -119,7 +119,7 @@ function buildPromptsQuery(
     return `($${textIdx}, $${topicIdx}, $1)`;
   });
   const text = `INSERT INTO prompts (text, topic, brand_id) VALUES ${valueClauses.join(', ')}`;
-  return sql.query(text, params);
+  return sql(text, params);
 }
 
 export async function POST(

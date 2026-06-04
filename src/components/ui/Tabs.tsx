@@ -9,7 +9,8 @@ export interface TabItem<T extends string = string> {
   count?: number;
 }
 
-export interface TabsProps<T extends string = string> extends HTMLAttributes<HTMLDivElement> {
+export interface TabsProps<T extends string = string>
+  extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> {
   items: TabItem<T>[];
   value: T;
   onChange: (value: T) => void;
