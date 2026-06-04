@@ -104,13 +104,30 @@ async function setupMocks(page: Page, state: MockState) {
 
 async function reachStep3(page: Page, url = 'https://acme.com') {
   await page.goto('/');
-  await expect(page.getByTestId('onboarding-step-1')).toBeVisible();
+  await expect(page.getByTestId('onboarding-step-1')).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('onboarding-url-input').fill(url);
   await page.getByTestId('onboarding-url-submit').click();
-  await expect(page.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('onboarding-step-3')).toBeVisible({ timeout: 30_000 });
 }
 
 test.describe('Onboarding UI — §9.7', () => {
+  // First navigation on a fresh Next.js dev server triggers on-demand compile of
+  // the `/` route and bundled assets, which can take >10s. We warm it up once so
+  // the per-test assertions don't race with first-compile latency.
+  test.beforeAll(async ({ browser }) => {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await setupMocks(page, freshState());
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page
+      .getByTestId('onboarding-progress')
+      .waitFor({ state: 'visible', timeout: 60_000 })
+      .catch(() => {
+        /* warmup is best-effort — per-test assertions will surface real failures */
+      });
+    await ctx.close();
+  });
+
   test('9.7.a Step indicator shows Website → Analyzing → Review & Launch', async ({ page }) => {
     const state = freshState();
     await setupMocks(page, state);

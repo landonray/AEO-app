@@ -10,21 +10,21 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
-  timeout: 30_000,
+  timeout: 120_000,
   expect: {
-    timeout: 5_000,
+    timeout: 20_000,
   },
   use: {
     baseURL: BASE_URL,
     trace: 'retain-on-failure',
-    actionTimeout: 5_000,
-    navigationTimeout: 15_000,
+    actionTimeout: 20_000,
+    navigationTimeout: 60_000,
   },
   webServer: {
     command: `npx next dev -p ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 180_000,
     env: {
       DATABASE_URL: process.env.DATABASE_URL ?? 'postgres://placeholder@localhost/placeholder',
       NEXT_TELEMETRY_DISABLED: '1',
