@@ -64,6 +64,16 @@ export function buildDetailUrl(
   return `/api/prompts/${encodeURIComponent(promptId)}?${sp.toString()}`;
 }
 
+/**
+ * True when the full response is longer than the 300-char preview, i.e. there
+ * is genuinely more text to reveal behind a "See more" link.
+ */
+export function isResponseTruncated(
+  row: Pick<ModelBreakdownRow, 'latestResponseFull' | 'latestResponsePreview'>,
+): boolean {
+  return row.latestResponseFull.length > row.latestResponsePreview.length;
+}
+
 function ModelCard({
   row,
   expanded,
@@ -79,6 +89,14 @@ function ModelCard({
   const sentiment = row.sentiment;
   const dotColor = sentiment ? SENTIMENT_COLOR[sentiment] : '#525259';
   const sentimentScore = sentiment ? SENTIMENT_SCORE[sentiment] : null;
+  const truncated = isResponseTruncated(row);
+  const [showFull, setShowFull] = useState(false);
+
+  // Collapse back to the preview whenever the whole card is collapsed, so a
+  // freshly re-opened card always starts in the short state.
+  useEffect(() => {
+    if (!expanded) setShowFull(false);
+  }, [expanded]);
 
   return (
     <div
@@ -163,12 +181,24 @@ function ModelCard({
           className="mt-3 border-t border-border/30 pt-3"
         >
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
-            Latest response preview
+            {showFull ? 'Latest response' : 'Latest response preview'}
           </div>
           {row.latestResponsePreview ? (
-            <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-muted-foreground">
-              {row.latestResponsePreview}
-            </p>
+            <>
+              <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-muted-foreground">
+                {showFull ? row.latestResponseFull : row.latestResponsePreview}
+                {!showFull && truncated && '…'}
+              </p>
+              {truncated && (
+                <button
+                  type="button"
+                  onClick={() => setShowFull((v) => !v)}
+                  className="mt-2 text-[12px] font-medium text-primary transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/60 rounded"
+                >
+                  {showFull ? 'See less' : 'See more'}
+                </button>
+              )}
+            </>
           ) : (
             <p className="mt-2 text-[12px] italic text-muted-foreground/60">
               No response captured for the latest run.
@@ -235,6 +265,7 @@ export function PromptDetailModal({
       sentiment: null,
       citationCount: 0,
       latestResponsePreview: '',
+      latestResponseFull: '',
     }));
 
   return (

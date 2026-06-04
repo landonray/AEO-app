@@ -99,6 +99,7 @@ describe('GET /api/prompts/[id] (§11.6)', () => {
       sentiment: null,
       citationCount: 0,
       latestResponsePreview: '',
+      latestResponseFull: '',
     });
   });
 
@@ -133,6 +134,23 @@ describe('GET /api/prompts/[id] (§11.6)', () => {
     const px = body.modelBreakdown.find((r: { model: string }) => r.model === 'perplexity');
     expect(px.latestResponsePreview).toHaveLength(300);
     expect(px.latestResponsePreview).toBe('x'.repeat(300));
+  });
+
+  it('latestResponseFull is the complete, untruncated most recent response', async () => {
+    getPromptMock.mockResolvedValueOnce(prompt());
+    const longText = 'x'.repeat(500);
+    getRunsForPromptMock.mockResolvedValueOnce([]);
+    getRunsForPromptInWindowMock.mockResolvedValueOnce([
+      mkRun({ id: 'r1', model: 'perplexity', response: longText }),
+    ]);
+    getCitationsForRunIdsMock.mockResolvedValueOnce([]);
+
+    const { GET } = await import('@/app/api/prompts/[id]/route');
+    const res = await GET(req(), ctx('p1'));
+    const body = await res.json();
+    const px = body.modelBreakdown.find((r: { model: string }) => r.model === 'perplexity');
+    expect(px.latestResponseFull).toHaveLength(500);
+    expect(px.latestResponseFull).toBe(longText);
   });
 
   it('returns the most recent runs (top 50) and their citations', async () => {

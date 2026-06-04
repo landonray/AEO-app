@@ -97,6 +97,7 @@ export async function GET(
         sentiment: null,
         citationCount: 0,
         latestResponsePreview: '',
+        latestResponseFull: '',
       };
     }
     return {
@@ -106,6 +107,7 @@ export async function GET(
       sentiment: latest.sentiment,
       citationCount: citationCountByRunId.get(latest.id) ?? 0,
       latestResponsePreview: previewOf(latest.response),
+      latestResponseFull: latest.response ?? '',
     };
   });
 
