@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { cn, relativeTime } from '@/lib/utils';
 import { Dropdown, MODEL_META, MODEL_ORDER, type DropdownOption } from '@/components/ui';
 import type { ModelFilter, ModelShortId } from '@/types';
@@ -82,7 +82,19 @@ export function Header({
 }: HeaderProps) {
   const { days, model, setDays, setModel } = useFilters();
 
-  const relative = lastUpdatedLabel ?? relativeTime(lastUpdated);
+  // Relative time depends on the current clock, which advances between the
+  // server render and client hydration ("9 seconds ago" vs "10 seconds ago").
+  // Track a client-side "now" that starts null so the first client render
+  // matches the server, then recompute after mount and tick every 30s so the
+  // label stays accurate.
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const relative = lastUpdatedLabel ?? relativeTime(lastUpdated, now ?? undefined);
 
   return (
     <header
@@ -118,6 +130,7 @@ export function Header({
         <span
           data-testid="last-updated"
           className="text-[11px] text-muted-foreground tabular-nums"
+          suppressHydrationWarning
         >
           Last updated {relative}
         </span>
