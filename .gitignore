@@ -3,6 +3,7 @@
 .env.*
 .env.local
 .env.production
+!.env.example
 
 # Dependencies
 node_modules/
@@ -11,6 +12,14 @@ node_modules/
 dist/
 build/
 .next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Test output
+coverage/
+playwright-report/
+test-results/
 
 # OS files
 .DS_Store
@@ -21,3 +30,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Logs
+*.log
+npm-debug.log*

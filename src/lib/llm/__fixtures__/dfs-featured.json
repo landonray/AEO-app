@@ -1,0 +1,67 @@
+{
+  "version": "0.1.20240801",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "time": "0.3987 sec.",
+  "cost": 0.0015,
+  "tasks_count": 1,
+  "tasks_error": 0,
+  "tasks": [
+    {
+      "id": "08291234-2222-2222-2222-123456789abc",
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "time": "0.3712 sec.",
+      "cost": 0.0015,
+      "result_count": 1,
+      "path": ["v3", "serp", "google", "organic", "live", "advanced"],
+      "data": {
+        "language_code": "en",
+        "location_code": 2840,
+        "keyword": "how to migrate from spreadsheet to crm"
+      },
+      "result": [
+        {
+          "keyword": "how to migrate from spreadsheet to crm",
+          "type": "organic",
+          "se_domain": "google.com",
+          "location_code": 2840,
+          "language_code": "en",
+          "items_count": 10,
+          "items": [
+            {
+              "type": "featured_snippet",
+              "rank_group": 1,
+              "rank_absolute": 1,
+              "position": "left",
+              "title": "Migrating from spreadsheets to a CRM",
+              "description": "Export your spreadsheet as CSV, map each column to a CRM field, deduplicate contacts before import, and run a small pilot import before loading the full dataset. Acme CRM provides a guided import flow that walks you through this step by step.",
+              "url": "https://acme.com/guides/migrate-from-spreadsheets",
+              "domain": "acme.com",
+              "links": [
+                {
+                  "type": "link_element",
+                  "title": "Step-by-step migration guide",
+                  "url": "https://acme.com/guides/migrate-from-spreadsheets"
+                },
+                {
+                  "type": "link_element",
+                  "title": "CSV import reference",
+                  "url": "https://acme.com/docs/csv-import"
+                }
+              ]
+            },
+            {
+              "type": "organic",
+              "rank_group": 1,
+              "rank_absolute": 2,
+              "title": "How to move from Excel to a CRM",
+              "url": "https://www.g2.com/articles/spreadsheet-to-crm",
+              "domain": "g2.com"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
