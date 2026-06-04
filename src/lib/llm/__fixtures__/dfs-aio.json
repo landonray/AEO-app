@@ -1,0 +1,95 @@
+{
+  "version": "0.1.20240801",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "time": "0.4231 sec.",
+  "cost": 0.0025,
+  "tasks_count": 1,
+  "tasks_error": 0,
+  "tasks": [
+    {
+      "id": "08291234-1234-1234-1234-123456789abc",
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "time": "0.3987 sec.",
+      "cost": 0.0025,
+      "result_count": 1,
+      "path": ["v3", "serp", "google", "organic", "live", "advanced"],
+      "data": {
+        "language_code": "en",
+        "location_code": 2840,
+        "keyword": "best CRM for SMBs"
+      },
+      "result": [
+        {
+          "keyword": "best CRM for SMBs",
+          "type": "organic",
+          "se_domain": "google.com",
+          "location_code": 2840,
+          "language_code": "en",
+          "items_count": 11,
+          "items": [
+            {
+              "type": "ai_overview",
+              "rank_group": 1,
+              "rank_absolute": 1,
+              "position": "left",
+              "markdown": "Acme CRM is widely recommended for SMBs because of its straightforward pricing and tight integration with Google Workspace. Beta and Charlie are also frequently mentioned as strong alternatives.",
+              "items": [
+                {
+                  "type": "ai_overview_element",
+                  "title": "Top picks",
+                  "text": "Acme CRM is widely recommended for SMBs because of its straightforward pricing and tight integration with Google Workspace."
+                },
+                {
+                  "type": "ai_overview_element",
+                  "title": "Alternatives",
+                  "text": "Beta and Charlie are also frequently mentioned as strong alternatives."
+                }
+              ],
+              "references": [
+                {
+                  "type": "ai_overview_reference",
+                  "title": "Acme CRM — Pricing",
+                  "url": "https://acme.com/pricing",
+                  "domain": "acme.com",
+                  "source": "acme.com"
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "title": "Best CRM software for small businesses",
+                  "url": "https://www.g2.com/categories/crm",
+                  "domain": "g2.com",
+                  "source": "g2.com"
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "title": "Beta CRM overview",
+                  "url": "https://beta.io/overview",
+                  "domain": "beta.io",
+                  "source": "beta.io"
+                }
+              ]
+            },
+            {
+              "type": "organic",
+              "rank_group": 1,
+              "rank_absolute": 2,
+              "title": "Top 10 CRMs for small business in 2026",
+              "url": "https://www.g2.com/categories/crm",
+              "domain": "g2.com"
+            },
+            {
+              "type": "organic",
+              "rank_group": 2,
+              "rank_absolute": 3,
+              "title": "Acme CRM | Built for growing teams",
+              "url": "https://acme.com/",
+              "domain": "acme.com"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

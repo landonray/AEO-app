@@ -1,0 +1,61 @@
+{
+  "version": "0.1.20240801",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "time": "0.3120 sec.",
+  "cost": 0.0010,
+  "tasks_count": 1,
+  "tasks_error": 0,
+  "tasks": [
+    {
+      "id": "08291234-3333-3333-3333-123456789abc",
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "time": "0.2891 sec.",
+      "cost": 0.0010,
+      "result_count": 1,
+      "path": ["v3", "serp", "google", "organic", "live", "advanced"],
+      "data": {
+        "language_code": "en",
+        "location_code": 2840,
+        "keyword": "obscure long tail query with no answer block"
+      },
+      "result": [
+        {
+          "keyword": "obscure long tail query with no answer block",
+          "type": "organic",
+          "se_domain": "google.com",
+          "location_code": 2840,
+          "language_code": "en",
+          "items_count": 8,
+          "items": [
+            {
+              "type": "organic",
+              "rank_group": 1,
+              "rank_absolute": 1,
+              "title": "An obscure blog post",
+              "url": "https://random-saas.io/post/1",
+              "domain": "random-saas.io"
+            },
+            {
+              "type": "organic",
+              "rank_group": 2,
+              "rank_absolute": 2,
+              "title": "Another result",
+              "url": "https://another-site.com/page",
+              "domain": "another-site.com"
+            },
+            {
+              "type": "people_also_ask",
+              "rank_group": 1,
+              "rank_absolute": 3,
+              "items": [
+                { "type": "people_also_ask_element", "title": "Related question 1" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
