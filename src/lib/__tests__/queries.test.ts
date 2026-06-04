@@ -17,6 +17,8 @@ import {
   buildGetLatestRunPerModelPerPrompt,
   buildInsertCitations,
   buildGetCitations,
+  buildGetCitationsForRunIds,
+  buildGetRunsForPromptInWindow,
   buildCheckTables,
   buildGetLastRunTimestamp,
   type BuiltQuery,
@@ -154,6 +156,15 @@ describe('queries: §2.5 parameterized SQL only', () => {
       name: 'buildGetCitations',
       build: () =>
         buildGetCitations({ brandId: 'brand-1', days: 90, model: 'perplexity' }),
+    },
+    {
+      name: 'buildGetCitationsForRunIds',
+      build: () => buildGetCitationsForRunIds(['r1', 'r2']),
+    },
+    {
+      name: 'buildGetRunsForPromptInWindow',
+      build: () =>
+        buildGetRunsForPromptInWindow('p-1', 30, 'claude'),
     },
     { name: 'buildCheckTables', build: () => buildCheckTables() },
     {
