@@ -1,55 +1,37 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
-import type { BrandResponse } from '@/types';
+import type { BrandResponse, SetupDbResponse } from '@/types';
 
-type BrandState =
-  | { kind: 'unknown' }
-  | { kind: 'no-brand' }
-  | { kind: 'has-brand'; name: string };
+export const dynamic = 'force-dynamic';
 
-export default function Home() {
-  const [state, setState] = useState<BrandState>({ kind: 'unknown' });
+async function getOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get('host') ?? `localhost:${process.env.PORT ?? '4810'}`;
+  const proto =
+    h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
+  return `${proto}://${host}`;
+}
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/brand', { cache: 'no-store' });
-        if (!res.ok) {
-          if (!cancelled) setState({ kind: 'no-brand' });
-          return;
-        }
-        const body = (await res.json()) as BrandResponse;
-        if (cancelled) return;
-        if (!body.brand) {
-          setState({ kind: 'no-brand' });
-        } else {
-          setState({ kind: 'has-brand', name: body.brand.name });
-        }
-      } catch {
-        if (cancelled) return;
-        setState({ kind: 'no-brand' });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+export default async function Home() {
+  const origin = await getOrigin();
 
-  if (state.kind === 'has-brand') {
-    return (
-      <main
-        className="flex min-h-screen flex-col items-center justify-center gap-2 px-6 text-center"
-        data-testid="dashboard-placeholder"
-      >
-        <h1 className="text-xl font-semibold text-foreground">Luminaire</h1>
-        <p className="text-[13px] text-muted-foreground">
-          Tracking {state.name}. Dashboard coming soon.
-        </p>
-      </main>
-    );
+  const setupRes = await fetch(`${origin}/api/setup-db`, { cache: 'no-store' });
+  if (setupRes.ok) {
+    const setup = (await setupRes.json()) as SetupDbResponse;
+    if (!setup.allTablesExist) {
+      redirect('/setup');
+    }
+  } else {
+    redirect('/setup');
+  }
+
+  const brandRes = await fetch(`${origin}/api/brand`, { cache: 'no-store' });
+  if (brandRes.ok) {
+    const body = (await brandRes.json()) as BrandResponse;
+    if (body.brand) {
+      redirect('/dashboard');
+    }
   }
 
   return <OnboardingFlow />;
