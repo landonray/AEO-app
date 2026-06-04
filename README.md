@@ -1,6 +1,6 @@
-# Luminaire
+# Ontraport AEO
 
-Luminaire is a single-tenant, locally-deployed AI search visibility tracker. It runs a fixed library of buyer-intent prompts across five "AI answer" surfaces — ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews — captures the responses, and reports how often your brand shows up, in what position, with what sentiment, alongside which competitors, and citing which sources.
+Ontraport AEO is a single-tenant, locally-deployed AI search visibility tracker. It runs a fixed library of buyer-intent prompts across five "AI answer" surfaces — ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews — captures the responses, and reports how often your brand shows up, in what position, with what sentiment, alongside which competitors, and citing which sources.
 
 It replaces hand-checking ChatGPT/Claude/etc. once a week with a daily automated run, structured metrics, and a dashboard.
 
@@ -60,7 +60,7 @@ The app listens on `http://localhost:4810`. To stop it, press `Ctrl+C` in the te
 
 ## Daily scheduled runs (cron)
 
-The dashboard becomes useful once Luminaire is running every day on its own. The app exposes `POST /api/cron/run` (bearer-authed with `CRON_SECRET`) and ships a small helper at `scripts/cron.mjs` that POSTs to it. The OS scheduler just needs to fire `npm run cron` once a day.
+The dashboard becomes useful once Ontraport AEO is running every day on its own. The app exposes `POST /api/cron/run` (bearer-authed with `CRON_SECRET`) and ships a small helper at `scripts/cron.mjs` that POSTs to it. The OS scheduler just needs to fire `npm run cron` once a day.
 
 ### macOS / Linux (`crontab -e`)
 
@@ -85,7 +85,7 @@ cmd /c "cd /d C:\path\to\luminaire && npm run cron >> cron.log 2>&1"
 1. The host machine must be on and not asleep at the scheduled time.
 2. The Next.js server must be running (`npm run dev` or `npm run start`) so it can accept the request.
 
-If either is not true, that day's run is silently missed and shows up as a gap in the trend chart. There is no backfill — Luminaire only knows about runs it actually executed. If you laptop-suspend a lot, schedule the run for a time when the laptop is reliably awake, or move Luminaire to a machine that stays up.
+If either is not true, that day's run is silently missed and shows up as a gap in the trend chart. There is no backfill — Ontraport AEO only knows about runs it actually executed. If you laptop-suspend a lot, schedule the run for a time when the laptop is reliably awake, or move Ontraport AEO to a machine that stays up.
 
 ---
 
@@ -93,7 +93,7 @@ If either is not true, that day's run is silently missed and shows up as a gap i
 
 ### Generic brand names produce false-positive mentions
 
-Brand-mention detection is a case-insensitive word-boundary match against the brand `name` or `domain`. For very generic brand names (e.g. "Apple", "Notion", "Stripe") this will match in any response where the model talks about the unrelated meaning — fruit, note-taking, payments — and Luminaire will count it as a mention. Visibility, share of voice, and the Rankings table will all read higher than reality.
+Brand-mention detection is a case-insensitive word-boundary match against the brand `name` or `domain`. For very generic brand names (e.g. "Apple", "Notion", "Stripe") this will match in any response where the model talks about the unrelated meaning — fruit, note-taking, payments — and Ontraport AEO will count it as a mention. Visibility, share of voice, and the Rankings table will all read higher than reality.
 
 There is no MVP fix for this. If your brand name is generic, treat the visibility number as an upper bound and skim the Recent Chats / Prompt Detail responses to sanity-check. A future iteration could add brand-disambiguation context to the parser.
 
@@ -134,4 +134,4 @@ This is a known limitation and is the intended path for the MVP. A future iterat
 
 - The full product spec (architecture, schema, parsing rules, design tokens, edge cases): `docs/specs/aeo-app-refined.md`.
 - The QA plan (acceptance scenarios for every chunk): `docs/specs/aeo-app-qa-plan.md`.
-- The LLM Gateway API contract Luminaire targets: `docs/llm-gateway-api.md`.
+- The LLM Gateway API contract Ontraport AEO targets: `docs/llm-gateway-api.md`.

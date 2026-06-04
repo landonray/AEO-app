@@ -42,7 +42,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   if (!res.ok) {
     return (
-      <DashboardShell brandName="Luminaire" lastUpdated={null}>
+      <DashboardShell brandName="Ontraport AEO" lastUpdated={null}>
         <div
           role="alert"
           className="rounded-lg border border-destructive/40 bg-destructive/10 p-5 text-[13px] text-destructive"

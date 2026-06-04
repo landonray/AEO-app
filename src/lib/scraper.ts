@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 
-const USER_AGENT = "LuminaireBot/1.0 (+https://luminaire.local)";
+const USER_AGENT = "OntraportAEOBot/1.0 (+https://aeo.landonray.com)";
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_CHARS_PER_PAGE = 5000;
 
