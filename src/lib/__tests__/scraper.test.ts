@@ -7,7 +7,7 @@ const FIXTURES_DIR = join(__dirname, "..", "__fixtures__");
 const HOMEPAGE_HTML = readFileSync(join(FIXTURES_DIR, "homepage.html"), "utf8");
 const PRICING_HTML = readFileSync(join(FIXTURES_DIR, "pricing.html"), "utf8");
 
-const EXPECTED_USER_AGENT = "LuminaireBot/1.0 (+https://luminaire.local)";
+const EXPECTED_USER_AGENT = "OntraportAEOBot/1.0 (+https://aeo.landonray.com)";
 const SECONDARY_PATHS = [
   "/pricing",
   "/features",
@@ -231,7 +231,7 @@ describe("crawlSite — §9.2 secondary pages", () => {
 });
 
 describe("crawlSite — User-Agent header (§9.2.e / §14.6)", () => {
-  it("sends LuminaireBot/1.0 (+https://luminaire.local) on every request", async () => {
+  it("sends OntraportAEOBot/1.0 (+https://aeo.landonray.com) on every request", async () => {
     const { captured } = installFetch(defaultResponder);
 
     await crawlSite("https://acme.com/");

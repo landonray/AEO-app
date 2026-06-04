@@ -110,7 +110,7 @@ export function Sidebar({ onBatchComplete }: SidebarProps) {
         >
           <Layers className="h-4 w-4" />
         </span>
-        <span className="font-semibold text-[14px] text-foreground tracking-tight">Luminaire</span>
+        <span className="font-semibold text-[14px] text-foreground tracking-tight">Ontraport AEO</span>
       </div>
 
       <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5 px-2">

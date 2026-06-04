@@ -95,7 +95,7 @@ export default function SetupPage() {
                   <div>
                     <h1 className="text-xl font-semibold text-foreground">Database setup</h1>
                     <p className="mt-1 text-[13px] text-muted-foreground">
-                      Luminaire needs the schema applied to your database before you can
+                      Ontraport AEO needs the schema applied to your database before you can
                       onboard a brand.
                     </p>
                   </div>
