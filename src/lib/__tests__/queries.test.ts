@@ -416,11 +416,15 @@ describe('prompt builders', () => {
     expect(params).toEqual(['hello', 'Core', 'brand-1']);
   });
 
-  it('buildListPrompts returns all prompts for a brand', () => {
+  it('buildListPrompts returns all prompts for a brand without filtering on is_active', () => {
     const { sql, params } = buildListPrompts('brand-1');
     const n = normalize(sql);
     expect(n).toMatch(/FROM prompts WHERE brand_id = \$1/);
-    expect(n).not.toMatch(/is_active/);
+    // The is_active column is selected (so callers can populate Prompt.isActive),
+    // but it must not appear in the WHERE clause — that variant is listActivePrompts.
+    const whereMatch = n.match(/WHERE([\s\S]*?)(ORDER BY|LIMIT|$)/i);
+    expect(whereMatch).not.toBeNull();
+    expect(whereMatch![1]).not.toMatch(/is_active/);
     expect(params).toEqual(['brand-1']);
   });
 
