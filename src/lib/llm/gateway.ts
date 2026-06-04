@@ -140,8 +140,21 @@ function parseGatewayResponse(data: unknown): CallGatewayResult {
   return { content, estimatedCost, runTotalCost, finishReason, toolCalls };
 }
 
-export async function callGateway(
+/**
+ * Detect the gateway's "this model doesn't accept a custom temperature" 400.
+ * Newer models (e.g. claude-opus-4-8, the gpt-5.x family) have deprecated the
+ * `temperature` parameter and reject any request that sets it. The gateway
+ * surfaces that as a 400 whose body mentions "temperature".
+ */
+function isTemperatureUnsupportedError(err: GatewayError): boolean {
+  if (err.status !== 400) return false;
+  const haystack = `${err.responseBody ?? ""} ${err.message}`.toLowerCase();
+  return haystack.includes("temperature");
+}
+
+async function performGatewayCall(
   opts: CallGatewayOptions,
+  includeTemperature: boolean,
 ): Promise<CallGatewayResult> {
   const base = requireEnv("LLM_GATEWAY_BASE_URL").replace(/\/+$/, "");
   const apiKey = requireEnv("LLM_GATEWAY_API_KEY");
@@ -152,7 +165,9 @@ export async function callGateway(
     messages: opts.messages,
   };
   if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
-  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+  if (includeTemperature && opts.temperature !== undefined) {
+    body.temperature = opts.temperature;
+  }
   if (opts.run_id !== undefined) body.run_id = opts.run_id;
   if (opts.response_format !== undefined) {
     body.response_format = opts.response_format;
@@ -216,6 +231,27 @@ export async function callGateway(
   }
 
   return parseGatewayResponse(data);
+}
+
+export async function callGateway(
+  opts: CallGatewayOptions,
+): Promise<CallGatewayResult> {
+  try {
+    return await performGatewayCall(opts, true);
+  } catch (err) {
+    // If the only problem was the (now-deprecated) temperature parameter,
+    // retry once without it so the surface still produces a result instead of
+    // failing the entire run. Models that genuinely error for other reasons
+    // surface their original error unchanged.
+    if (
+      err instanceof GatewayError &&
+      opts.temperature !== undefined &&
+      isTemperatureUnsupportedError(err)
+    ) {
+      return performGatewayCall(opts, false);
+    }
+    throw err;
+  }
 }
 
 export async function callGatewayJSON<T = unknown>(

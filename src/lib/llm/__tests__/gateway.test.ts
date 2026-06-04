@@ -344,6 +344,86 @@ describe("callGatewayJSON — §4.4 JSON parse failure retries once", () => {
   });
 });
 
+describe("callGateway — temperature-unsupported retry", () => {
+  it("retries once without temperature when a 400 reports temperature is deprecated", async () => {
+    const mock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              type: "invalid_request_error",
+              message: "`temperature` is deprecated for this model.",
+            },
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(jsonResponse({ content: "recovered" }));
+    global.fetch = mock as unknown as typeof fetch;
+
+    const result = await callGateway({
+      model: "claude-opus-4-8",
+      messages: [{ role: "user", content: "What is the best CRM?" }],
+      max_tokens: 2000,
+      temperature: 0.3,
+      run_id: "batch-abc",
+    });
+
+    expect(mock).toHaveBeenCalledTimes(2);
+    expect(result.content).toBe("recovered");
+
+    // First attempt includes temperature…
+    expect(captureRequest(mock, 0).body.temperature).toBe(0.3);
+    // …retry drops it but keeps everything else.
+    const retryBody = captureRequest(mock, 1).body;
+    expect(retryBody.temperature).toBeUndefined();
+    expect(retryBody).toEqual({
+      model: "claude-opus-4-8",
+      messages: [{ role: "user", content: "What is the best CRM?" }],
+      max_tokens: 2000,
+      run_id: "batch-abc",
+    });
+  });
+
+  it("does not retry a 400 that is unrelated to temperature", async () => {
+    const mock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ error: { message: "context length exceeded" } }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    global.fetch = mock as unknown as typeof fetch;
+
+    await expect(
+      callGateway({
+        model: "claude-opus-4-8",
+        messages: [{ role: "user", content: "ping" }],
+        temperature: 0.3,
+      }),
+    ).rejects.toBeInstanceOf(GatewayError);
+    expect(mock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry when no temperature was sent", async () => {
+    const mock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ error: { message: "temperature not allowed" } }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    global.fetch = mock as unknown as typeof fetch;
+
+    await expect(
+      callGateway({
+        model: "claude-opus-4-8",
+        messages: [{ role: "user", content: "ping" }],
+      }),
+    ).rejects.toBeInstanceOf(GatewayError);
+    expect(mock).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("callGateway — §4.5 5xx surfaces typed error", () => {
   it("throws GatewayError with status and body on HTTP 500", async () => {
     global.fetch = vi.fn().mockResolvedValue(
