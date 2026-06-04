@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "node",
     globals: false,
     passWithNoTests: true,
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.next/**", "e2e/**"],
   },
   resolve: {
     alias: {
