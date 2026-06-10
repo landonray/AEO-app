@@ -27,11 +27,22 @@ I am a product leader, not a developer. I understand architecture and product de
 # Quality Checks — Run After Every Task
 - Review the code you wrote for quality, bugs, and security issues
 - Check that your changes integrate cleanly with the existing architecture
-- Run all available tests and fix any failures before telling me you're done
+- Run the tests that cover your change and fix any failures before telling me you're done
 - Confirm that nothing you changed broke something that was already working
 - Done. Here's exactly what I added as a new bullet under **Quality Checks — Run After Every Task**:
 - **CRITICAL: After ANY backend change (server/, shared/schema.ts, or anything that affects the server), you MUST restart the dev server to pick up the changes. The tsx runtime does NOT auto-reload — changes are NOT picked up until the server is manually restarted. Never assume the server will detect changes on its own.**
 - Report what you found in plain English before marking the task complete
+
+# Testing Requirements
+
+## How to run tests during a session — focused, never the whole suite
+- Run ONLY the tests that cover the files you changed after each change. Pass the specific test files for the code you touched to the runner (`mc_run_tests` with `patterns`, or `vitest run <files>` / `pytest <files>`). A focused run is seconds to a couple of minutes; a full suite on a mature project takes many minutes and must NOT be your inner-loop or end-of-task check.
+- Do NOT run the entire suite as a condition of "done." The full suite belongs in CI (running automatically on push) or runs only when I explicitly ask — never as a per-task gate that burns interactive time.
+
+## What to test — fewer, higher-value tests
+- Test meaningful logic and behavior — the things that would actually break and matter. Do NOT write a test per file for trivial code (simple getters, passthroughs, framework glue) just to have one. Volume is not the goal; covering what matters is.
+- Never write unit tests that hit a live or remote database. Network round-trips make tests slow and flaky. Mock the data layer, or use a fast local database. Reserve real-database tests for a small, clearly separated integration set that is NOT part of the routine focused run.
+- When modifying existing code, update the tests that cover it; add a new test only where the new behavior genuinely warrants one.
 
 # Definition of Done
 A task is not done until:
