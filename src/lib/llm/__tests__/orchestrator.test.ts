@@ -9,6 +9,8 @@ import * as queriesModule from '@/lib/queries';
 
 import {
   MODEL_SURFACES,
+  TRACKING_MAX_TOKENS,
+  TRACKING_TIMEOUT_MS,
   runBatch,
   type OrchestratorBrand,
   type OrchestratorCompetitor,
@@ -288,6 +290,26 @@ describe('runBatch — §7.1 happy path: 1 prompt × 5 models', () => {
       const opts = call[0]!;
       expect(opts.run_id).toBe(result.batchId);
     }
+  });
+
+  it('gives every gateway call enough output tokens and time to finish after reasoning', async () => {
+    const env = freshEnv();
+    installGatewayMock(env);
+    installPerplexityMock(env);
+    installGoogleAIOMock(env);
+    installQueryMocks(env);
+    silenceErrorLogs(env);
+
+    await runBatch([PROMPT_ONE], BRAND, COMPETITORS);
+
+    const gatewaySpy = vi.mocked(gatewayModule.callGateway);
+    expect(gatewaySpy).toHaveBeenCalledTimes(3);
+    for (const call of gatewaySpy.mock.calls) {
+      expect(call[0]!.max_tokens).toBe(TRACKING_MAX_TOKENS);
+      expect(call[0]!.timeoutMs).toBe(TRACKING_TIMEOUT_MS);
+    }
+    expect(TRACKING_MAX_TOKENS).toBeGreaterThanOrEqual(8000);
+    expect(TRACKING_TIMEOUT_MS).toBeGreaterThan(gatewayModule.GATEWAY_TIMEOUT_MS);
   });
 });
 

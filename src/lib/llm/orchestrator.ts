@@ -31,6 +31,17 @@ export const MODEL_SURFACES: ReadonlyArray<ModelShortId> = [
   'google_aio',
 ];
 
+// Output-token cap for the tracked gateway models. The frontier models reason
+// before answering and that reasoning counts against max_tokens, so a tight cap
+// truncates the visible answer mid-sentence (and undercounts brand mentions).
+// At 2000, ~2/3 of Claude and Gemini answers were cut off; a long comparison
+// prompt needs ~4000 on claude-opus-5-5, so 8000 leaves headroom.
+export const TRACKING_MAX_TOKENS = 8000;
+// Full-length answers are slow: a long prompt took up to 67s on gpt-6.1-sol and
+// 63s on claude-opus-5-5, past the gateway's 60s default. The daily batch has
+// no overall deadline, so give tracked calls generous room.
+export const TRACKING_TIMEOUT_MS = 180_000;
+
 export type OrchestratorBrand = Pick<Brand, 'name' | 'domain'>;
 export type OrchestratorCompetitor = Pick<Competitor, 'name' | 'domain'>;
 export type OrchestratorPrompt = Pick<Prompt, 'id' | 'text'>;
@@ -69,9 +80,10 @@ async function callSurface(
     const result = await callGateway({
       model,
       messages: [{ role: 'user', content: promptText }],
-      max_tokens: 2000,
+      max_tokens: TRACKING_MAX_TOKENS,
       temperature: 0.3,
       run_id: batchId,
+      timeoutMs: TRACKING_TIMEOUT_MS,
     });
     return {
       content: result.content,

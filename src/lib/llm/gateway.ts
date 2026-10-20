@@ -27,6 +27,8 @@ export interface CallGatewayOptions {
   response_format?: Record<string, unknown>;
   tools?: unknown[];
   tool_choice?: string | Record<string, unknown>;
+  /** Client-side abort deadline; not sent to the gateway. Defaults to GATEWAY_TIMEOUT_MS. */
+  timeoutMs?: number;
 }
 
 export interface CallGatewayResult {
@@ -176,7 +178,7 @@ async function performGatewayCall(
   if (opts.tool_choice !== undefined) body.tool_choice = opts.tool_choice;
 
   const controller = new AbortController();
-  const timeoutMs = GATEWAY_TIMEOUT_MS;
+  const timeoutMs = opts.timeoutMs ?? GATEWAY_TIMEOUT_MS;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
