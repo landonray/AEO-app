@@ -525,6 +525,47 @@ describe("callGateway — §4.6 60s timeout", () => {
     const result = await promise;
     expect(result.content).toBe("ok");
   });
+
+  it("honours a per-call timeoutMs instead of the 60s default, and does not send it in the body", async () => {
+    vi.useFakeTimers();
+
+    const mock = vi.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_, reject) => {
+          const signal = init.signal;
+          if (signal) {
+            signal.addEventListener("abort", () => {
+              reject(new DOMException("aborted", "AbortError"));
+            });
+          }
+        }),
+    );
+    global.fetch = mock as unknown as typeof fetch;
+
+    const promise = callGateway({
+      model: "claude-opus-5-5",
+      messages: [{ role: "user", content: "ping" }],
+      timeoutMs: 180_000,
+    });
+    let settledAt: number | null = null;
+    const settled = promise.catch((err: unknown) => {
+      settledAt = Date.now();
+      return err;
+    });
+    const start = Date.now();
+
+    await vi.advanceTimersByTimeAsync(GATEWAY_TIMEOUT_MS);
+    expect(settledAt).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(180_000 - GATEWAY_TIMEOUT_MS);
+    const err = await settled;
+    expect(err).toBeInstanceOf(GatewayTimeoutError);
+    expect((err as GatewayTimeoutError).timeoutMs).toBe(180_000);
+    expect(settledAt! - start).toBe(180_000);
+
+    const { body } = captureRequest(mock);
+    expect(body).not.toHaveProperty("timeoutMs");
+  });
 });
 
 describe("callGateway — §4.7 / §14.1.c no secrets in errors or logs", () => {
