@@ -6,7 +6,7 @@ first_seen: 2026-06-01
 last_seen: 2026-10-20
 tags: [tracking, llm-gateway, data-quality]
 reports: ["found while updating tracked models, 2026-10-20"]
-prs: []
+prs: ["#12"]
 ---
 # KI-001 — Claude and Gemini answers are cut off mid-sentence
 
@@ -53,7 +53,7 @@ fits a switch to a thinking model in July. When the redirect started has not
 been checked.
 
 ## Status and what's shipped
-- **Fix (PR pending):** the daily tracking calls now ask for up to 8,000
+- **Fix (PR #12, not yet merged):** the daily tracking calls now ask for up to 8,000
   output tokens instead of 2,000, and tracked models were updated to
   `gpt-6.1-sol` and `claude-opus-5-5` (Gemini stays `gemini-3.1-pro-preview`).
 - **Related guard in the same PR:** full-length answers are slower. A long
