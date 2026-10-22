@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 
-const USER_AGENT = "OntraportAEOBot/1.0 (+https://aeo.landonray.com)";
+const USER_AGENT = "AEOTrackerBot/1.0 (+https://github.com/landonray/AEO-app)";
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_CHARS_PER_PAGE = 5000;
 

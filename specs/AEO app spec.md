@@ -1,5 +1,7 @@
 # Claude Code Prompt: AI Search Visibility Platform (LLM Gateway + Neon)
 
+> **The original build prompt,** kept as written apart from two edits: a private address replaced with a placeholder, and a note about the author's machine removed. The app was called "Luminaire" at this stage. It was refined into `docs/specs/aeo-app-refined.md` before the build, and the code and README are the current source of truth.
+
 You are an expert full-stack engineer. Build a complete, production-quality AI SaaS application from scratch. This is an **AI Search Visibility Platform** called **Luminaire** that tracks how brands appear inside LLM responses (ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews).
 
 > **Adapted stack:** OpenAI, Claude, and Gemini calls go through the **LLM Gateway**; **Perplexity is called directly** (the gateway does not support it); Google AI Overview is a direct DataForSEO SERP call. The database is **Neon** (serverless Postgres) via a real Postgres driver — not Supabase REST.
@@ -10,7 +12,7 @@ You are an expert full-stack engineer. Build a complete, production-quality AI S
 
 **LLM Gateway**
 
-- Endpoint: `POST ${LLM_GATEWAY_BASE_URL}/chat/completions`, where `LLM_GATEWAY_BASE_URL` = `https://llm-gateway.replit.app/api/v1`.
+- Endpoint: `POST ${LLM_GATEWAY_BASE_URL}/chat/completions`, where `LLM_GATEWAY_BASE_URL` = `https://your-llm-gateway.example.com/api/v1`.
 - Auth: `Authorization: Bearer ${LLM_GATEWAY_API_KEY}` (keys are prefixed `llmgw_`).
 - The underlying provider is chosen by the `model` string in the request body. Covers OpenAI, Anthropic (Claude), and Gemini only.
 - **Response shape is NOT standard OpenAI.** For a non-streaming request the assistant text is a top-level string field `content` (i.e. `response.content`), NOT `choices[0].message.content`. Tool calls (when used) come back as a top-level `tool_calls` array. The response also includes `usage`, `provider`, `model`, `finish_reason`, and `estimated_cost`.
@@ -37,7 +39,7 @@ Create a `.env.local` file with these placeholders. All API calls MUST be server
 
 ```
 # LLM Gateway (OpenAI, Claude, Gemini)
-LLM_GATEWAY_BASE_URL=https://llm-gateway.replit.app/api/v1
+LLM_GATEWAY_BASE_URL=https://your-llm-gateway.example.com/api/v1
 LLM_GATEWAY_API_KEY=<your-llmgw_-key>
 
 # TRACKING models — the frontier models real users get in the consumer chat apps.
@@ -66,10 +68,9 @@ DATABASE_URL=<your-neon-connection-string>        # postgres://...neon.tech/...?
 # Scheduler auth (protects the cron endpoint)
 CRON_SECRET=<random-long-string>
 
-# App port — this machine already has 3000 and 5000 in use by other projects,
-# so this app runs on 4810. The dev and start scripts must bind to this port
-# (e.g. `next dev -p 4810` / `next start -p 4810`), and the cron script must
-# POST to http://localhost:4810.
+# App port — runs on 4810 to stay clear of the common 3000/5000 dev ports.
+# The dev and start scripts must bind to this port (e.g. `next dev -p 4810` /
+# `next start -p 4810`), and the cron script must POST to http://localhost:4810.
 PORT=4810
 ```
 

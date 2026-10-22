@@ -6,6 +6,8 @@ It replaces hand-checking ChatGPT/Claude/etc. once a week with a daily automated
 
 The product is meant to run on your own machine (or a VM you control) against your own Neon Postgres database. There is no hosted version, no login, and no multi-tenant story — see `docs/specs/aeo-app-refined.md` for the full spec.
 
+> **Security: the app has no login.** Anyone who can reach its port can see the dashboard and use every control on it: start prompt runs (which spend your API credits), add or archive prompts, re-run the database setup, and run onboarding, whose crawler fetches any address it is given, including ones on your internal network. Keep it on `localhost` or a private network you trust. If you want to reach it from elsewhere, put an access layer in front of it, such as a VPN (e.g. Tailscale) or a login proxy (e.g. Cloudflare Access) — never expose the port directly to the internet. The daily cron endpoint is the only route with its own protection (`CRON_SECRET`).
+
 ---
 
 ## Setup
@@ -27,7 +29,7 @@ cp .env.example .env
 Then edit `.env` and set:
 
 - `DATABASE_URL` — your Neon Postgres connection string (`sslmode=require`).
-- `LLM_GATEWAY_API_KEY` — the bearer token for the LLM Gateway (used for OpenAI, Claude, and Gemini calls).
+- `LLM_GATEWAY_BASE_URL` / `LLM_GATEWAY_API_KEY` — the address of, and your key for, the LLM Gateway used for OpenAI, Claude, and Gemini calls. Read [About the LLM Gateway](#about-the-llm-gateway) first: it is not a public service.
 - `PERPLEXITY_API_KEY` — a Perplexity API key (called directly, not via the gateway).
 - `DATAFORSEO_LOGIN` / `DATAFORSEO_PASSWORD` — your DataForSEO credentials (used to scrape Google AI Overviews).
 - `CRON_SECRET` — any long random string. Used as the bearer for the daily cron endpoint so nothing else on `localhost` can trigger a run.
@@ -58,6 +60,19 @@ The app listens on `http://localhost:4810`. To stop it, press `Ctrl+C` in the te
 
 ---
 
+## About the LLM Gateway
+
+OpenAI, Claude, and Gemini are not called directly. Every call goes through an LLM Gateway: a separate service that holds the provider keys, picks the provider from the model name, and tracks cost. Its API is documented in `docs/llm-gateway-api.md`.
+
+The gateway this app was built against is private, so you cannot get a key for it. To run your own copy, either:
+
+- **Run a compatible gateway** that implements the contract in `docs/llm-gateway-api.md` (note that its chat response is *not* the standard OpenAI shape: the answer text is a top-level `content` field), and point `LLM_GATEWAY_BASE_URL` at it; or
+- **Call the providers directly** by replacing the HTTP request in `performGatewayCall` (`src/lib/llm/gateway.ts`) with calls to the OpenAI, Anthropic, and Google APIs, returning the same result shape. Every model call — the daily runs (`src/lib/llm/orchestrator.ts`) and the onboarding generators (`src/lib/generators.ts`, which also need JSON-schema output) — goes through that one function.
+
+Perplexity (called directly with your own key) and Google AI Overviews (via DataForSEO) do not use the gateway.
+
+---
+
 ## Daily scheduled runs (cron)
 
 The dashboard becomes useful once Ontraport AEO is running every day on its own. The app exposes `POST /api/cron/run` (bearer-authed with `CRON_SECRET`) and ships a small helper at `scripts/cron.mjs` that POSTs to it. The OS scheduler just needs to fire `npm run cron` once a day.
@@ -65,7 +80,7 @@ The dashboard becomes useful once Ontraport AEO is running every day on its own.
 ### macOS / Linux (`crontab -e`)
 
 ```
-0 9 * * * cd /path/to/luminaire && /usr/local/bin/node ./scripts/cron.mjs >> ./cron.log 2>&1
+0 9 * * * cd /path/to/AEO-app && /usr/local/bin/node ./scripts/cron.mjs >> ./cron.log 2>&1
 ```
 
 (Or `npm run cron` instead of the explicit `node` invocation, if your cron environment has `PATH` set.)
@@ -75,7 +90,7 @@ The dashboard becomes useful once Ontraport AEO is running every day on its own.
 Create a daily 9:00 AM task that runs:
 
 ```
-cmd /c "cd /d C:\path\to\luminaire && npm run cron >> cron.log 2>&1"
+cmd /c "cd /d C:\path\to\AEO-app && npm run cron >> cron.log 2>&1"
 ```
 
 ### Important caveat — the machine must be on and the app must be running
@@ -130,8 +145,15 @@ This is a known limitation and is the intended path for the MVP. A future iterat
 
 ---
 
+## Tests
+
+- `npm test` runs the unit tests. They mock the database and every external API, so they need no keys and never touch your database.
+- `npm run test:e2e` runs the Playwright end-to-end tests, which start their own dev server on port 6810. They read `DATABASE_URL` from your shell environment, not from `.env`. They assume a database that already has a brand onboarded, and the onboarding test deletes the brand with the domain `acme.com` (its test brand) and all of that brand's data, so point them at a separate test database or Neon branch, not your live one.
+
+---
+
 ## What to look at next
 
 - The full product spec (architecture, schema, parsing rules, design tokens, edge cases): `docs/specs/aeo-app-refined.md`.
-- The QA plan (acceptance scenarios for every chunk): `docs/specs/aeo-app-qa-plan.md`.
-- The LLM Gateway API contract Ontraport AEO targets: `docs/llm-gateway-api.md`.
+- The LLM Gateway API contract the app targets: `docs/llm-gateway-api.md`.
+- Known issues, with what has already been investigated and ruled out: `docs/known-issues/INDEX.md`.

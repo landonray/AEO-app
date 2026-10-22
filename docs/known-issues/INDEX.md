@@ -16,4 +16,4 @@ Next free ID: **KI-002**.
 
 | ID | Title | Status | Last seen |
 |---|---|---|---|
-| [KI-001](KI-001-truncated-model-answers.md) | Claude and Gemini answers are cut off mid-sentence | fix-in-flight | 2026-10-20 |
+| [KI-001](KI-001-truncated-model-answers.md) | Claude and Gemini answers are cut off mid-sentence | fixed-standing-damage | 2026-10-20 |
