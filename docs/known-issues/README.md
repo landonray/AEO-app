@@ -2,8 +2,7 @@
 
 The standing list of defects this project keeps re-finding, plus the findings
 already investigated and ruled NOT defects. One file per issue, indexed in
-`INDEX.md`. Owner-facing: plain English, no code. Mission Control renders this
-folder on the project page's Known Issues tab.
+`INDEX.md`. Owner-facing: plain English, no code.
 
 **Purpose.** Reports and sightings keep surfacing the same defect classes. Each
 time, a session re-diagnoses from scratch and often re-proposes a fix that was
@@ -85,8 +84,7 @@ Every fix that was proposed and then measured wrong, with the number that
 killed it. This section only grows.
 
 ## Where it was investigated
-Reports, PRs, Mission Control sessions (https://mc.landonray.com/session/<id>),
-decision records, docs.
+Reports, PRs, working sessions, decision records, docs.
 
 ## Sightings log
 | date | where | count | note |

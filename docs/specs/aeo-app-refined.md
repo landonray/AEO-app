@@ -1,4 +1,6 @@
-# Luminaire — Refined Spec (AI Search Visibility Platform)
+# Ontraport AEO — Refined Spec (AI Search Visibility Platform)
+
+> **Historical build spec.** This is the spec the app was originally built from (during the build it was called "Luminaire"). Some details have since changed — model defaults, for example. Where this document and the code or README disagree, the code and README are current.
 
 This is the implementation-ready spec produced from `specs/AEO app spec.md`. It supersedes the raw spec where the two disagree; differences are called out explicitly under **Resolved Open Questions** and **Assumptions**.
 
@@ -14,7 +16,7 @@ The original raw spec is detailed and largely correct. The refinement here:
 
 ## 1. Purpose
 
-Luminaire is a single-tenant, locally-deployed AI search visibility tracker. It runs a fixed library of buyer-intent prompts across five "AI answer" surfaces — ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews — captures the responses, and reports how often the user's brand shows up, in what position, with what sentiment, alongside which competitors, and citing which sources. Over time (weeks/months) the user sees trend lines and acts on a short list of generated recommendations.
+Ontraport AEO is a single-tenant, locally-deployed AI search visibility tracker. It runs a fixed library of buyer-intent prompts across five "AI answer" surfaces — ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews — captures the responses, and reports how often the user's brand shows up, in what position, with what sentiment, alongside which competitors, and citing which sources. Over time (weeks/months) the user sees trend lines and acts on a short list of generated recommendations.
 
 The product replaces hand-checking ChatGPT/Claude/etc. once a week with a daily automated run, structured metrics, and a dashboard.
 
@@ -38,7 +40,7 @@ The product replaces hand-checking ChatGPT/Claude/etc. once a week with a daily 
 
 - Multi-tenant / multi-user accounts. No login, no user table, no Google OAuth (see assumption A1).
 - Multi-brand tracking simultaneously. The DB schema supports many brands by design, but the UI and onboarding flow only ever surface one (`is_primary = true`) at a time.
-- Historical backfill of runs from before the user installed Luminaire.
+- Historical backfill of runs from before the user installed Ontraport AEO.
 - Push notifications, email summaries, Slack alerts.
 - API for external consumers.
 - Cloud deployment, multi-region, horizontal scaling. The cron path is documented for macOS/Linux cron and Windows Task Scheduler only.
@@ -72,7 +74,7 @@ DATABASE_URL=postgres://...neon.tech/...?sslmode=require   # Neon
 NODE_ENV=development
 PORT=4810                                                  # app port
 
-LLM_GATEWAY_BASE_URL=https://llm-gateway.replit.app/api/v1
+LLM_GATEWAY_BASE_URL=https://your-llm-gateway.example.com/api/v1
 LLM_GATEWAY_API_KEY=llmgw_...
 
 # Tracking models — frontier consumer-tier, used for visibility/sentiment/position
@@ -245,7 +247,7 @@ This is the area where the raw spec is most out of date. The authoritative sourc
 
 ### Base URL and auth
 
-- `LLM_GATEWAY_BASE_URL = https://llm-gateway.replit.app/api/v1`. Use the env value, never hardcode.
+- `LLM_GATEWAY_BASE_URL` comes from the environment (e.g. `https://your-llm-gateway.example.com/api/v1`). Use the env value, never hardcode.
 - Chat completions: `POST ${LLM_GATEWAY_BASE_URL}/chat/completions`.
 - Auth: `Authorization: Bearer ${LLM_GATEWAY_API_KEY}`.
 
@@ -373,7 +375,7 @@ Buttons at bottom: "Start Over" (outline, returns to Step 1, discards crawl data
 - Fetch the homepage first. If it fails (non-2xx, network error), abort with a 4xx error.
 - After the homepage, fetch in parallel: `/pricing`, `/features`, `/about`, `/integrations`, `/use-cases`, `/product`. Each fetch:
   - 10s timeout.
-  - `User-Agent: LuminaireBot/1.0 (+https://luminaire.local)`.
+  - `User-Agent: AEOTrackerBot/1.0 (+https://github.com/landonray/AEO-app)`.
   - Skip on any non-2xx (silent skip — the page just doesn't exist).
 - HTML stripping: parse with `cheerio`, remove `script`, `style`, `noscript`, `nav`, `footer`, `header`, then return `text()`. Trim whitespace, collapse repeated spaces.
 - Truncate each page to 5000 characters before sending to the model. Total prompt size bounded.
@@ -619,12 +621,12 @@ The `Other` value remains as a legacy default in the schema; in practice the cla
 - **macOS/Linux cron:**
 
   ```
-  0 9 * * * cd /path/to/luminaire && /usr/local/bin/node ./scripts/cron.mjs >> ./cron.log 2>&1
+  0 9 * * * cd /path/to/AEO-app && /usr/local/bin/node ./scripts/cron.mjs >> ./cron.log 2>&1
   ```
 
   (or `npm run cron` if PATH is set).
 
-- **Windows Task Scheduler:** create a daily 9am task running `cmd /c "cd /d C:\path\to\luminaire && npm run cron >> cron.log 2>&1"`.
+- **Windows Task Scheduler:** create a daily 9am task running `cmd /c "cd /d C:\path\to\AEO-app && npm run cron >> cron.log 2>&1"`.
 
 ### Known limitation
 
@@ -829,7 +831,7 @@ See §12. Requires bearer.
 
 ### Sidebar
 
-- Top: "Luminaire" logo — a teal Layers icon (`lucide-react`) in a rounded-md container, name in `font-semibold`.
+- Top: "Ontraport AEO" logo — a teal Layers icon (`lucide-react`) in a rounded-md container, name in `font-semibold`.
 - Nav items (`MainNav`): Overview (LayoutDashboard), Prompts (MessageSquareText), Sources (Globe). Use the App Router; nav state derived from pathname.
 - Active state: `bg-white/[0.06] text-foreground`, icon tinted teal (`text-primary`).
 - Inactive: `text-muted-foreground hover:bg-white/[0.03]`.
@@ -1051,7 +1053,7 @@ Each card: `rounded-lg border border-border/40 bg-card/60 p-5`, label `text-[10p
 
 Each assumption below is something the raw spec didn't explicitly answer; I'm making the call here so the implementer doesn't have to.
 
-- **A1 — No app authentication.** The product is single-user, local-only, on `localhost:4810`. No login flow, no Google OAuth, no user table. The only auth boundary is the cron endpoint, protected by `CRON_SECRET`. The project-global rule "Auth: Google OAuth via environment variables" applies *when auth is needed*; this MVP does not need it. If the user later wants to expose Luminaire on a network, OAuth can be added.
+- **A1 — No app authentication.** The product is single-user, local-only, on `localhost:4810`. No login flow, no Google OAuth, no user table. The only auth boundary is the cron endpoint, protected by `CRON_SECRET`. The project-global rule "Auth: Google OAuth via environment variables" applies *when auth is needed*; this MVP does not need it. If the user later wants to expose Ontraport AEO on a network, OAuth can be added.
 - **A2 — One primary brand.** The schema supports multiple brands, but the app workflow only ever surfaces one. `/api/onboarding/complete` rejects (409) if a primary brand already exists. Re-onboarding requires the user to manually delete the brand row in Neon for the MVP. (Future iteration: a "Reset / Start Over" admin action.)
 - **A3 — Sequential across prompts.** The raw spec says "sequential across models". I extend that to "sequential across prompts" too, for the same reason (predictable gateway load, easier debugging). A future optimization could parallelize across prompts.
 - **A4 — Soft skip cron lockout.** No mutex between manual "Run All Prompts" and the cron endpoint. Two batches at once produce duplicate runs but don't crash. Acceptable for a single-user local app.

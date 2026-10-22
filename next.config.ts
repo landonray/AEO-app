@@ -5,14 +5,15 @@ const nextConfig: NextConfig = {
   // serve from. Playwright e2e (chunk 29) navigates to 127.0.0.1:<E2E_PORT>,
   // which Next sees as a cross-origin request and blocks. Allowing the local
   // loopback hosts is a dev-only opt-in and has no effect on production.
-  // The Tailscale IP and Cloudflare tunnel hostname are added so the app can be
-  // reached over the tailnet and via aeo.landonray.com in dev without Next
-  // blocking HMR/server-action requests as cross-origin.
+  // To open the dev server from another host (a LAN or Tailscale IP, a tunnel
+  // hostname), list those hosts comma-separated in ALLOWED_DEV_ORIGINS in .env.
   allowedDevOrigins: [
     "127.0.0.1",
     "localhost",
-    "100.119.59.78",
-    "aeo.landonray.com",
+    ...(process.env.ALLOWED_DEV_ORIGINS ?? "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
   ],
 };
 

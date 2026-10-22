@@ -1,11 +1,16 @@
 # LLM Gateway API Documentation
 
+> **This gateway is private, not a public service.** This is the API contract of the
+> gateway this app was built against, kept here so the code that calls it
+> (`src/lib/llm/gateway.ts`) makes sense. The host below is a placeholder. To run
+> your own copy, see "About the LLM Gateway" in the README.
+
 A unified API gateway for OpenAI, Anthropic (Claude), and Google Gemini. Use a single API format to access all providers with centrally managed keys, usage tracking, and cost reporting.
 
 ## Base URL
 
 ```
-https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev
+https://your-llm-gateway.example.com
 ```
 
 ## Authentication
@@ -30,7 +35,7 @@ Returns all available models with their provider and pricing information.
 
 **Example:**
 ```bash
-curl https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/models \
+curl https://your-llm-gateway.example.com/api/v1/models \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
@@ -113,7 +118,7 @@ Send a chat completion request. The gateway routes to the correct provider based
 
 **Example:**
 ```bash
-curl -X POST https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/chat/completions \
+curl -X POST https://your-llm-gateway.example.com/api/v1/chat/completions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -168,7 +173,7 @@ These reasoning models route through OpenAI's `/v1/responses` endpoint. Save `re
 
 ```bash
 # Turn 2 — continues from response_id of turn 1
-curl -X POST https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/chat/completions \
+curl -X POST https://your-llm-gateway.example.com/api/v1/chat/completions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -198,7 +203,7 @@ Accepts OpenAI's `response_format` shape and translates it to each provider's na
 - **Streaming:** schema-mode streams content deltas as usual. Anthropic `json_object` mode buffers and emits the fence-stripped result in a single chunk.
 
 ```bash
-curl -X POST https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/chat/completions \
+curl -X POST https://your-llm-gateway.example.com/api/v1/chat/completions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -226,7 +231,7 @@ Each chunk is sent as a `data:` line, ending with `data: [DONE]`.
 
 **Example:**
 ```bash
-curl -X POST https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/chat/completions \
+curl -X POST https://your-llm-gateway.example.com/api/v1/chat/completions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -249,7 +254,7 @@ data: [DONE]
 ```python
 import requests, json
 
-response = requests.post("https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/chat/completions",
+response = requests.post("https://your-llm-gateway.example.com/api/v1/chat/completions",
     headers={"Authorization": "Bearer YOUR_API_KEY"},
     json={"model": "claude-sonnet-4-6", "messages": [{"role": "user", "content": "Hello!"}], "stream": True},
     stream=True
@@ -450,7 +455,7 @@ Generate vector embeddings for text input. Useful for semantic search, clusterin
 
 **Example:**
 ```bash
-curl -X POST https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/embeddings \
+curl -X POST https://your-llm-gateway.example.com/api/v1/embeddings \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -503,7 +508,7 @@ Generate images from text prompts. Images are returned as base64-encoded data. O
 
 **Example:**
 ```bash
-curl -X POST https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/images/generations \
+curl -X POST https://your-llm-gateway.example.com/api/v1/images/generations \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -559,7 +564,7 @@ OpenAI only — every image carries its own `response_id`. Pass that ID back as 
 ```python
 import requests, base64
 
-response = requests.post("https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/images/generations",
+response = requests.post("https://your-llm-gateway.example.com/api/v1/images/generations",
     headers={"Authorization": "Bearer YOUR_API_KEY"},
     json={"model": "gpt-image-2", "prompt": "A cute robot painting", "size": "1024x1024", "quality": "medium"}
 )
@@ -577,7 +582,7 @@ Transcribe audio files to text using OpenAI's speech-to-text models. Supports fi
 
 **Example:**
 ```bash
-curl -X POST https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/audio/transcriptions \
+curl -X POST https://your-llm-gateway.example.com/api/v1/audio/transcriptions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -F file=@recording.mp3 \
   -F model=whisper-1
@@ -615,7 +620,7 @@ curl -X POST https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janew
 ```python
 import requests
 
-response = requests.post("https://418e8e41-f2c5-4668-9288-05bf4383eab5-00-2qo8qplx7ur9c.janeway.replit.dev/api/v1/audio/transcriptions",
+response = requests.post("https://your-llm-gateway.example.com/api/v1/audio/transcriptions",
     headers={"Authorization": "Bearer YOUR_API_KEY"},
     files={"file": open("recording.mp3", "rb")},
     data={"model": "whisper-1"}
